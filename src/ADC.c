@@ -25,7 +25,11 @@ void delayus(unsigned int nn)
 */
 void adc_init(void)
 {
-	ADCCFG = 0x20;
+	unsigned char __data saved_p_sw2 = P_SW2;
+	P_SW2 |= 0x80;//Enable access to extended SFRs.
+	ADCTIM = 0x3f;//Sample for 32 ADC clocks; default channel setup/hold times.
+	P_SW2 = saved_p_sw2;
+	ADCCFG = 0x2f;//Right-aligned result; ADC clock = system clock / 32.
 	ADC_RES = 0;
 	ADC_RESL = 0;//Clear the result register.
 	delayus(20);

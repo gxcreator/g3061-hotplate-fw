@@ -4,6 +4,7 @@
 #include "timer0.h"
 #include "ADC.h"
 #include "temperature.h"
+#include "voltage.h"
 #include "EEPROM.h"
 #include <math.h>
 
@@ -135,12 +136,12 @@ void init(void)
 	}
 	for(i=0;i<numofsam;i++)
 	{
-		vcc+=(1.19*4096)/get_adc(vcc_channel);//Calculate supply voltage
+		vcc+=(ADC_REFERENCE_VOLTS*4096)/get_adc(vcc_channel);//Calculate supply voltage
 	}
 	vcc/=numofsam;
 	for(i=0;i<numofsam;i++)
 	{
-		powvol+=19*vcc*(powvol_average[i]/4096);
+		powvol+=SUPPLY_VOLTAGE_SCALE*vcc*(powvol_average[i]/4096);
 		realtem+=realtem_average[i];
 	}
 	powvol/=numofsam;
@@ -284,12 +285,12 @@ void page0(void)
 	vcc=0;
 	for(i=0;i<numofsam;i++)
 	{
-		vcc+=(1.19*4096)/get_adc(vcc_channel);//Calculate reference voltage
+		vcc+=(ADC_REFERENCE_VOLTS*4096)/get_adc(vcc_channel);//Calculate supply voltage
 	}
 	vcc/=numofsam;
 	for(i=0;i<numofsam;i++)
 	{
-		powvol+=20*vcc*(powvol_average[i]/4096);//Calculate supply voltage
+		powvol+=SUPPLY_VOLTAGE_SCALE*vcc*(powvol_average[i]/4096);//Calculate supply voltage
 		realtem+=realtem_average[i];//Calculate actual temperature
 	}
 	powvol/=numofsam;
