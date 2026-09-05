@@ -16,8 +16,8 @@ bit _OLED_Overlap = 1;
 static char __x, __y;
 
 void delay_ms(unsigned int ms)
-{                         
-	unsigned int a;
+{
+	volatile unsigned int a;
 	while(ms)
 	{
 		a=1800;
@@ -77,13 +77,15 @@ void I2C_Start(void)
 void I2C_Stop(void)
 {
 	OLED_SDA_Clr();
+	IIC_delay();
 	OLED_SCL_Set();
 	IIC_delay();
 	OLED_SDA_Set();
+	IIC_delay();
 }
 
-//Wait for signal response
-void I2C_WaitAck(void) //Sample the data signal level
+//Clock the ACK bit with SDA released; the response is not checked.
+void I2C_WaitAck(void)
 {
 	OLED_SDA_Set();
 	IIC_delay();
@@ -268,6 +270,14 @@ void OLED_DrawBMP(int x,int y,unsigned char sizex, unsigned char sizey,unsigned 
 //Initialize				    
 void OLED_Init(void)
 {
+	OLED_SCL_Set();
+	OLED_SDA_Set();
+	//SCL is push-pull; SDA is quasi-bidirectional so ACK can pull it low.
+	P3M1 &= (u8)~0x60;
+	P3M0 = (P3M0 & (u8)~0x40) | 0x20;
+	OLED_RES_Set();
+	P2M1 &= (u8)~0x08;
+	P2M0 |= 0x08;
 	OLED_RES_Clr();
   delay_ms(200);
 	OLED_RES_Set();

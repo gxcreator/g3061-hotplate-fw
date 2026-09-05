@@ -1,7 +1,7 @@
 # Makefile for building the HeatingPlate-PD firmware with SDCC
 # (open-source 8051 compiler) instead of Keil C51.
 #
-# Target: STC8H3K64S4  (64KB flash, 256B IRAM, 3KB XRAM)
+# Target: STC8H3K64S2  (64KB flash, 256B IRAM, 3KB XRAM)
 # Matches the Keil project's LARGE memory model with floating point.
 #
 # Usage:   make            -> build/HeatingPlate-PD.hex
@@ -11,6 +11,7 @@
 # Configure STC-ISP for 4 KiB EEPROM before flashing this image.
 
 SDCC    ?= sdcc
+SDAS8051 ?= sdas8051
 PACKIHX ?= packihx
 
 SRC_DIR := src
@@ -25,7 +26,8 @@ CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
 SRCS := main.c ADC.c oled.c EEPROM.c timer0.c
-RELS := $(SRCS:%.c=$(BUILD)/%.rel)
+# SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
+RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(SRC_DIR)/*.H)
 
 all: $(BUILD)/$(TARGET).hex
@@ -33,8 +35,11 @@ all: $(BUILD)/$(TARGET).hex
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/%.rel: $(SRC_DIR)/%.c $(HDRS) | $(BUILD)
+$(BUILD)/%.rel: $(SRC_DIR)/%.c $(HDRS) Makefile | $(BUILD)
 	$(SDCC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.rel: $(SRC_DIR)/%.asm Makefile | $(BUILD)
+	$(SDAS8051) -plosgff $@ $<
 
 $(BUILD)/$(TARGET).ihx: $(RELS)
 	$(SDCC) $(LFLAGS) -o $@ $(RELS)
