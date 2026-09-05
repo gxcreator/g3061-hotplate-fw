@@ -99,16 +99,12 @@ void init(void)
 	if(maxtartem>350){maxtartem=350;}
 	else if(maxtartem<200){maxtartem=200;}
 	if(mintartem>200){mintartem=0;}
-	else if(mintartem<0){mintartem=0;}
 	if(tartem>maxtartem){tartem=maxtartem;}
 	else if(tartem<mintartem){tartem=mintartem;}
 	if(kp>1000){kp=500;}
-	else if(kp<0){kp=0;}
 	if(ki>1000){ki=500;}
-	else if(ki<0){ki=0;}
 	if(kd>1000){kd=500;}
-	else if(kd<0){kd=0;}
-	if(modesel>page1_MODEnum-2 || page1_MODEnum<0)
+	if(modesel>page1_MODEnum-2)
 	{
 		modesel=0;
 	}
@@ -330,7 +326,7 @@ void relkey_page1(void)
 		{
 			pagenum++;
 		}
-		else if(pagenum>=100 && pagenum<110)
+		else if(pagenum<110)
 		{
 			switch(pagenum%10)
 			{
@@ -392,7 +388,7 @@ void relkey_page1(void)
 		{
 			pagenum--;
 		}
-		else if(pagenum>=100 && pagenum<110)
+		else if(pagenum<110)
 		{
 			switch(pagenum%10)
 			{
@@ -563,7 +559,7 @@ void page1(void)
 		OLED_DrawBMP_2(2,1,17,48,page1_arrlw);
 		OLED_DrawBMP_2(48,0,32,64,page1_icon[pagenum-1]);
 	}
-	else if(pagenum>=10 && pagenum < 20)//PID submenu
+	else if(pagenum < 20)//PID submenu
 	{
 		OLED_DrawBMP_2(109,1,17,48,page1_arrrw);
 		OLED_DrawBMP_2(2,1,17,48,page1_arrlw);
@@ -588,7 +584,7 @@ void page1(void)
 			}
 		}
 	}
-	else if(pagenum>=20 && pagenum < 30)//Temperature submenu
+	else if(pagenum < 30)//Temperature submenu
 	{
 		OLED_DrawBMP_2(109,1,17,48,page1_arrrw);
 		OLED_DrawBMP_2(2,1,17,48,page1_arrlw);
@@ -613,7 +609,7 @@ void page1(void)
 			}
 		}
 	}
-	else if(pagenum>=30 && pagenum<=40)//Mode submenu
+	else if(pagenum<=40)//Mode submenu
 	{
 		OLED_DrawBMP_2(109,1,17,48,page1_arrrw);
 		OLED_DrawBMP_2(2,1,17,48,page1_arrlw);

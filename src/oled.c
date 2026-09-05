@@ -13,7 +13,7 @@ const unsigned char __code width=128;
 bit _OLED_Reverse = 0;     
 bit _OLED_Overlap = 1;
 
-static char __x, __y;
+static unsigned char __x, __y;
 
 void delay_ms(unsigned int ms)
 {
@@ -321,19 +321,14 @@ void OLED_DrawPixel(unsigned char x, unsigned char y,unsigned char color)
 {
     unsigned char mask;
     unsigned char *pBuf;
+		if(x >= width || y >= height * 8)
+		{
+			return;
+		}
 		if(y%2 == 0)
 		{
 			y++;
 		}
-    if (__x > width)
-    {
-        __x = 0;
-        __y += 1;
-    }
-    if (__y > height * 8)
-    {
-        __y = 0;
-    }
 		pBuf = &_buf[(y >> 3) * width + x];
     mask = 1 << (y & 7);
     if (!color)
