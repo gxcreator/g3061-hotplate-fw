@@ -39,9 +39,9 @@ void OLED_Clear(void);
 void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey);
 unsigned int oled_pow(u8 m,u8 n);
 void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 sizey);
-void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 sizey);
+void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey);
 void OLED_ShowChinese(u8 x,u8 y,u8 no,u8 sizey);
-void OLED_DrawBMP(int x,int y,unsigned char sizex,unsigned char sizey,unsigned char BMP[]);
+void OLED_DrawBMP(int x,int y,unsigned char sizex,unsigned char sizey,const unsigned char BMP[]);
 void OLED_Init(void);
 void OLED_Display(void);
 void OLED_Write_Data(unsigned char dat);
@@ -54,7 +54,7 @@ void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offse
 void OLED_DrawChar(u8 x, u8 y, u8 chr);
 void OLED_DrawNum(unsigned char digit, unsigned char len);
 void OLED_Set_Posi(unsigned char x, unsigned char y);
-void OLED_DrawBMP_2(u8 x0, u8 y0, u8 x1, u8 y1, u8 *BMP);
+void OLED_DrawBMP_2(u8 x0, u8 y0, u8 x1, u8 y1, const u8 *BMP);
 
 #endif  
 	 

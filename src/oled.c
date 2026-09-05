@@ -7,8 +7,8 @@
 
 unsigned char _buf[128*8]={0};
 
-unsigned char code height=8;
-unsigned char code width=128;
+const unsigned char __code height=8;
+const unsigned char __code width=128;
 
 bit _OLED_Reverse = 0;     
 bit _OLED_Overlap = 1;
@@ -222,7 +222,7 @@ void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 sizey)
 }
 
 //Display a string
-void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 sizey)
+void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey)
 {
 	u8 j=0;
 	while (chr[j]!='\0')
@@ -250,7 +250,7 @@ void OLED_ShowString(u8 x,u8 y,u8 *chr,u8 sizey)
 //x,y: display coordinates
 //sizex,sizey: image dimensions
 //BMP: image to display
-void OLED_DrawBMP(int x,int y,unsigned char sizex, unsigned char sizey,unsigned char BMP[])
+void OLED_DrawBMP(int x,int y,unsigned char sizex, unsigned char sizey,const unsigned char BMP[])
 { 	
   int j=0;
 	int i,m;
@@ -430,7 +430,7 @@ void OLED_display(void)
 	//OLED_DrawBMP(0,6,width[1],heigth[1]*8,_buf1);
 }
 
-void OLED_display_clear()
+void OLED_display_clear(void)
 {
 	memset(_buf, 0x00, width * height);
 }
@@ -547,9 +547,9 @@ void OLED_DrawNum(unsigned char digit, unsigned char len)
     __x += len;
 }
 
-void OLED_DrawBMP_2(u8 x0, u8 page0, u8 xsize, u8 ysize, u8 *BMP)
+void OLED_DrawBMP_2(u8 x0, u8 page0, u8 xsize, u8 ysize, const u8 *BMP)
 {
-	u16 i, j, p;
+	u16 i, j;
 	for(j = page0; j < page0+ysize/8; j++)
 	{
 		for(i = x0; i < x0+xsize; i++)

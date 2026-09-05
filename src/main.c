@@ -38,13 +38,13 @@ int err=0,lasterr=0;
 int integral=0;
 int derivative=0;
 
-double showpwm=0;
-double showpwm_opp=0;
-double powvol;//Supply voltage total
-double powvol_average[30]={0};//Supply voltage samples
-double realtem=0;//Actual temperature
-double realtem_average[30]={0};//Actual temperature samples
-double vcc=0;
+float showpwm=0;
+float showpwm_opp=0;
+float powvol;//Supply voltage total
+float powvol_average[30]={0};//Supply voltage samples
+float realtem=0;//Actual temperature
+float realtem_average[30]={0};//Actual temperature samples
+float vcc=0;
 
 unsigned char count=0;//Supply voltage sample index
 unsigned char page = 0;//Page selection
@@ -552,7 +552,7 @@ void relkey_page1(void)
 	}
 }
 
-void page1()
+void page1(void)
 {
 	OLED_display_clear();
 	relkey_page1();
@@ -693,7 +693,7 @@ void page1()
 	OLED_display();
 }
 
-void mode0()
+void mode0(void)
 {
 	Draw_realnum(0,0,realtem);//Display measured temperature
 	Draw_tarnum(48,3,tartem,1);//Draw target temperature to buffer
@@ -719,7 +719,7 @@ void mode0()
 	else{OLED_DrawBMP_2(84, 0, 42, 48, state[0]);}
 }
 
-void mode1()
+void mode1(void)
 {
 	Draw_tarnum(0,0,realtem,0);//Draw target temperature to buffer
 	Draw_tarnum(0,3,tartem,0);//Draw target temperature to buffer

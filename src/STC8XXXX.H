@@ -2221,7 +2221,7 @@ __sbit __at(0xB8) PX0;	//External interrupt 0 priority setting bit
 //							            7    6    5      4    3   2  1   0   Reset Value
 //sfr IAP_CONTR = 0xC7;		IAPEN SWBS SWRST CFAIL  -   -  -   -   0000,x000	//IAP Control Register
 
-#define IAP_EN          (1<<7)
+#define IAP_EN          (1u<<7)
 #define IAP_SWBS        (1<<6)
 #define IAP_SWRST       (1<<5)
 #define IAP_CMD_FAIL    (1<<4)
