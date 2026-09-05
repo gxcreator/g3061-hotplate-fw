@@ -1,5 +1,6 @@
 #include "STC8XXXX.H"
 #include <intrins.h>
+#include "ADC.h"
 
 
 /*
@@ -22,7 +23,7 @@ void delayus(unsigned int nn)
 	Parameters: none.
 	Returns: none.
 */
-void adc_init()
+void adc_init(void)
 {
 	ADCCFG = 0x20;
 	ADC_RES = 0;
@@ -60,15 +61,4 @@ unsigned int get_adc(unsigned int p)
 	while(!(ADC_CONTR & 0x20));//Wait for ADC conversion to complete.
 	ADC_CONTR &= ~0x20;//Disable the ADC converter.
 	return (ADC_RES * 256 + ADC_RESL);
-}
-/*
-	Calculate temperature from the ADC value.
-	Parameters: ADC value and error compensation.
-	Returns: temperature.
-*/
-unsigned int transform(unsigned int adc,double p1,double p2,double p3,double p4)
-{
-	int temp;
-	temp = p1*adc*adc*adc+p2*adc*adc+p3*adc+p4;
-	return temp;
 }

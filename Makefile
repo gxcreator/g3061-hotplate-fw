@@ -25,7 +25,7 @@ MCU_FLAGS := -mmcs51 --model-large \
 CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
-SRCS := main.c ADC.c oled.c EEPROM.c timer0.c
+SRCS := main.c ADC.c temperature.c oled.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
 RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(SRC_DIR)/*.H)

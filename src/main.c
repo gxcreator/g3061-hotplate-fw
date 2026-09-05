@@ -3,6 +3,7 @@
 #include "bmp.h"
 #include "timer0.h"
 #include "ADC.h"
+#include "temperature.h"
 #include "EEPROM.h"
 #include <math.h>
 
@@ -40,12 +41,8 @@ double showpwm=0;
 double showpwm_opp=0;
 double powvol;//Supply voltage total
 double powvol_average[30]={0};//Supply voltage samples
-double realtem=200;//Actual temperature
+double realtem=0;//Actual temperature
 double realtem_average[30]={0};//Actual temperature samples
-double p1=    0.00000016;//Temperature curve coefficient 1
-double p2=   -0.00089441;//Temperature curve coefficient 2
-double p3=    1.91367865;//Temperature curve coefficient 3
-double p4=-1537.97459730;//Temperature curve coefficient 4
 double vcc=0;
 
 unsigned char count=0;//Supply voltage sample index
@@ -81,6 +78,7 @@ bit eeprom_mode=1;
 bit pageflag;//Page switch flag
 bit blinker;//Refresh flag
 bit pidflag;
+volatile bit sensor_fault;//Latched until power is cycled
 
 void init(void)
 {
@@ -128,7 +126,12 @@ void init(void)
 	for(i=0;i<numofsam;i++)
 	{
 		powvol_average[i]=get_adc(vol_channel);//Read supply ADC value
-		realtem_average[i]=transform(get_adc(tem_channel),p1,p2,p3,p4);
+		realtem_average[i]=temperature_from_adc(get_adc(tem_channel));
+		if(realtem_average[i]==TEMPERATURE_INVALID)
+		{
+			sensor_fault=1;
+			return;
+		}
 	}
 	for(i=0;i<numofsam;i++)
 	{
@@ -149,6 +152,19 @@ void main(void)
 	init();
 	while(1)
 	{
+		if(sensor_fault)
+		{
+			swclose=0;
+			heat=0;
+			pwm=0;
+			pidflag=0;
+			OLED_Clear();
+			for(i=0;i<12;i++)
+			{
+				OLED_ShowChar(16+8*i,3,"SENSOR FAULT"[i],16);
+			}
+			while(1){}//Do not restart heating after a sensor fault.
+		}
 		if(page==0){page0();}//Page 0
 		if(page==1){page1();}//Page 1
 	}
@@ -158,7 +174,7 @@ void timer0(void) __interrupt(1)
 {
 	time++;
 	if(time==1000){time=0;blinker=0;if(swclose){pidflag=1;}}
-	if(pwm>=time && swclose){heat=1;}
+	if(!sensor_fault && pwm>time && swclose){heat=1;}
 	else/* if(pwm<time || !swclose)*/{heat=0;}
 	prekey();//Detect and time key presses
 }
@@ -219,7 +235,7 @@ void relkey_page0(void)
 	{
 		swclose=!swclose;
 		pagenum=1;
-		heat=swclose;
+		heat=0;//The timer controls the output after PWM is calculated.
 		integral=0;
 		pwm=0;
 		keyj=0;
@@ -256,7 +272,13 @@ void page0(void)
 	count++;
 	count%=numofsam;
 	powvol_average[count]=get_adc(vol_channel);//Read supply ADC value
-	realtem_average[count]=transform(get_adc(tem_channel),p1,p2,p3,p4);
+	realtem_average[count]=temperature_from_adc(get_adc(tem_channel));
+	if(realtem_average[count]==TEMPERATURE_INVALID)
+	{
+		sensor_fault=1;
+		heat=0;
+		return;
+	}
 	realtem=0;
 	powvol=0;
 	vcc=0;
@@ -272,11 +294,6 @@ void page0(void)
 	}
 	powvol/=numofsam;
 	realtem/=numofsam;
-	//realtem=pidflag;
-	if(realtem>400 || realtem<0)
-	{
-		realtem=0;
-	}
 	if(pidflag){pid_p();pidflag=0;}
 	if(modesel==0){mode0();}//Display mode 0
 	else if(modesel==1){mode1();}//Display mode 1
