@@ -31,6 +31,31 @@ RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(SRC_DIR)/*.H)
 
 all: $(BUILD)/$(TARGET).hex
+	@awk 'function report(name, used, limit) { \
+		printf "%-23s %9d %9d %7.1f%% %9d\n", \
+			name, used, limit, (limit ? 100 * used / limit : 0), limit - used; \
+	} \
+	BEGIN { \
+	    printf "========\n" ;\
+		printf "%-23s %9s %9s %8s %9s\n", \
+			"Memory", "Used (B)", "Limit (B)", "Usage", "Free (B)"; \
+	} \
+	/^0x[[:xdigit:]]+:[|]/ { \
+		n = split($$0, cells, /[|]/); \
+		for (i = 2; i < n; i++) { \
+			if (cells[i] == "S") stack++; \
+			else if (cells[i] == " ") spare++; \
+			else allocated++; \
+		} \
+	} \
+	/PAGED EXT\. RAM/ { report("Paged XRAM (shared)", $$(NF-1), $$NF); } \
+	/EXTERNAL RAM/ { report("XRAM", $$(NF-1), $$NF); } \
+	/ROM\/EPROM\/FLASH/ { report("Flash (linker limit)", $$(NF-1), $$NF); } \
+	END { \
+		printf "IRAM: %d B static, %d B available for stack, %d B unallocated (%d B total)\n", \
+			allocated, stack, spare, allocated + stack + spare; \
+		print "Paged XRAM shares XRAM. Stack availability is not measured runtime usage."; \
+	}' "$(BUILD)/$(TARGET).mem"
 
 $(BUILD):
 	mkdir -p $(BUILD)
