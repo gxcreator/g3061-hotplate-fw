@@ -1,0 +1,3 @@
+[submodule "lib/FwLib_STC8"]
+	path = lib/FwLib_STC8
+	url = git@github.com:IOsetting/FwLib_STC8.git

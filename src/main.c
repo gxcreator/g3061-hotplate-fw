@@ -1,4 +1,5 @@
-#include "STC8XXXX.H"
+#include "board.h"
+#include "fw_exti.h"
 #include "oled.h"
 #include "bmp.h"
 #include "timer0.h"
@@ -7,10 +8,6 @@
 #include "voltage.h"
 #include "EEPROM.h"
 #include <math.h>
-
-#define vol_channel 0
-#define tem_channel 1
-#define vcc_channel 15
 
 void prekey(void);//Calculate key press duration
 void relkey_page0(void);//Handle key input
@@ -63,26 +60,26 @@ unsigned char eepmint[2]={0};
 unsigned char mapline[101]={0};//Temperature history
 unsigned char numofsam=30;//Sample count
 
-__sbit __at(0xB4) heat;//Heater (P3^4)
-__sbit __at(0xB2) key0;//Key 0 (P3^2)
-__sbit __at(0xB3) key1;//Key 1 (P3^3)
-
-bit swclose=1;//Key sleep switch
-bit keyj0;//Key 0 flag
-bit keyj1;//Key 1 flag
-bit keyj;//Both-key flag 1
-bit keyp;//Both-key flag 2
-bit eeprom_tartem=1;//Target temperature flag
-bit eeprom_pid=1;//PID parameter flag
-bit eeprom_limtem=1;//Temperature limit flag
-bit eeprom_mode=1;
-bit pageflag;//Page switch flag
-bit blinker;//Refresh flag
-bit pidflag;
-volatile bit sensor_fault;//Latched until power is cycled
+__BIT swclose=1;//Key sleep switch
+__BIT keyj0;//Key 0 flag
+__BIT keyj1;//Key 1 flag
+__BIT keyj;//Both-key flag 1
+__BIT keyp;//Both-key flag 2
+__BIT eeprom_tartem=1;//Target temperature flag
+__BIT eeprom_pid=1;//PID parameter flag
+__BIT eeprom_limtem=1;//Temperature limit flag
+__BIT eeprom_mode=1;
+__BIT pageflag;//Page switch flag
+__BIT blinker;//Refresh flag
+__BIT pidflag;
+volatile __BIT sensor_fault;//Latched until power is cycled
 
 void init(void)
 {
+	/* Set the off latch before enabling the heater's push-pull driver. */
+	heat=0;
+	GPIO_P3_SetMode(HEATER_PIN, GPIO_Mode_Output_PP);
+	swclose=0;
 	EEPROM_read_n(0x0000,&eeptart[0],2);
 	EEPROM_read_n(0x0200,&eepkp[0],2);
 	EEPROM_read_n(0x0204,&eepki[0],2);
@@ -108,17 +105,15 @@ void init(void)
 	{
 		modesel=0;
 	}
-	P1M0 = 0x00;//00000011
-	P1M1 = 0xff;//11111100
-	P3M0 = 0xff;//11111111
-	P3M1 = 0x0c;//00001100
-	heat=0;
-	swclose=0;
+	GPIO_P1_SetMode(SUPPLY_ADC_PIN | TEMPERATURE_ADC_PIN, GPIO_Mode_Input_HIP);
+	key0=1;
+	key1=1;
+	GPIO_P3_SetMode(BUTTON_PINS, GPIO_Mode_InOut_OD);
 	powvol=0;
 	adc_init();//Initialize ADC
 	OLED_Init();//Initialize display
 	Timer0Init();//Initialize Timer 0
-	EA=1;
+	EXTI_Global_SetIntState(HAL_State_ON);
 	showpwm_opp=100-showpwm;
 	for(i=0;i<numofsam;i++)
 	{
@@ -167,7 +162,7 @@ void main(void)
 	}
 }
 
-void timer0(void) __interrupt(1)
+INTERRUPT(timer0, EXTI_VectTimer0)
 {
 	time++;
 	if(time==1000){time=0;blinker=0;if(swclose){pidflag=1;}}

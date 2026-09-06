@@ -7,28 +7,40 @@
 # Usage:   make            -> build/HeatingPlate-PD.hex
 #          make clean
 #
-# Flash layout: 60 KiB code (0x0000-0xEFFF), 4 KiB IAP EEPROM.
-# Configure STC-ISP for 4 KiB EEPROM before flashing this image.
+# Linker limit: 60 KiB code. The programmed flash/EEPROM split is separate.
 
 SDCC    ?= sdcc
 SDAS8051 ?= sdas8051
 PACKIHX ?= packihx
+HOST_CC ?= cc
 
 SRC_DIR := src
 BUILD   := build
 TARGET  := HeatingPlate-PD
 CODE_SIZE := 0xF000
+HAL_DIR := lib/FwLib_STC8
+
+ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(wildcard $(HAL_DIR)/include/fw_conf.h),)
+$(error FwLib_STC8 is missing. Run 'git submodule update --init --recursive')
+endif
+endif
+
+# Match the existing clock assumption; do not trim the oscillator at runtime.
+HAL_FLAGS := -D__CONF_MCU_MODEL=MCU_MODEL_STC8H3K64S2 \
+             -D__CONF_FOSC=33177600UL -D__CONF_CLKDIV=0
 
 MCU_FLAGS := -mmcs51 --model-large \
              --iram-size 256 --xram-size 3072 --code-size $(CODE_SIZE)
 
-CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc
+CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc \
+           -I$(HAL_DIR)/include $(HAL_FLAGS)
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
 SRCS := main.c ADC.c temperature.c oled.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
 RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
-HDRS := $(wildcard $(SRC_DIR)/*.h $(SRC_DIR)/*.H)
+HDRS := $(wildcard $(SRC_DIR)/*.h $(HAL_DIR)/include/*.h)
 
 all: $(BUILD)/$(TARGET).hex
 	@awk 'function report(name, used, limit) { \
@@ -72,7 +84,14 @@ $(BUILD)/$(TARGET).ihx: $(RELS)
 $(BUILD)/$(TARGET).hex: $(BUILD)/$(TARGET).ihx
 	$(PACKIHX) $< > $@
 
+test: $(BUILD)/hal_test
+	"$(BUILD)/hal_test"
+
+$(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(HDRS) Makefile | $(BUILD)
+	$(HOST_CC) -std=c11 -O2 -Wall -Wextra -Werror -Wno-parentheses \
+		-I$(HAL_DIR)/include $< -o $@
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean
+.PHONY: all clean test

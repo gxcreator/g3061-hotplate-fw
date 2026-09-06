@@ -1,18 +1,13 @@
 #ifndef __OLED_H
 #define __OLED_H
 
-#include "STC8XXXX.H"
+#include "board.h"
  
 #define  u8 unsigned char 
 #define  u16 unsigned int
-#define  u32 unsigned int
 	
 #define OLED_CMD  0	//Write command
 #define OLED_DATA 1	//Write data
-
-__sbit __at(0xB5) OLED_SCL;//SCL (P3^5)
-__sbit __at(0xB6) OLED_SDA;//SDA (P3^6)
-__sbit __at(0xA3) OLED_RES;//RES (P2^3)
 
 //-----------------OLED port definitions----------------
 
@@ -37,8 +32,8 @@ void OLED_Display_On(void);
 void OLED_Display_Off(void);
 void OLED_Clear(void);
 void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey);
-unsigned int oled_pow(u8 m,u8 n);
-void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 sizey);
+uint16_t oled_pow(u8 m,u8 n);
+void OLED_ShowNum(u8 x,u8 y,uint16_t num,u8 len,u8 sizey);
 void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey);
 void OLED_ShowChinese(u8 x,u8 y,u8 no,u8 sizey);
 void OLED_DrawBMP(int x,int y,unsigned char sizex,unsigned char sizey,const unsigned char BMP[]);
@@ -50,7 +45,7 @@ void OLED_display(void);
 void _swap_char(unsigned char* a,unsigned char* b);
 void OLED_DrawLine(unsigned char x1,unsigned char y1,unsigned char x2,unsigned char y2,unsigned char color);
 void OLED_display_clear(void);
-void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, bit reserve_hl);
+void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, __BIT reserve_hl);
 void OLED_DrawChar(u8 x, u8 y, u8 chr);
 void OLED_DrawNum(unsigned char digit, unsigned char len);
 void OLED_Set_Posi(unsigned char x, unsigned char y);

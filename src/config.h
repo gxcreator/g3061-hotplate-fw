@@ -1,33 +1,12 @@
-/*---------------------------------------------------------------------*/
-/* --- STC MCU Limited ------------------------------------------------*/
-/* --- STC 1T Series MCU Demo Programme -------------------------------*/
-/* --- Mobile: (86)13922805190 ----------------------------------------*/
-/* --- Fax: 86-0513-55012956,55012947,55012969 ------------------------*/
-/* --- Tel: 86-0513-55012928,55012929,55012966 ------------------------*/
-/* --- Web: www.STCMCU.com --------------------------------------------*/
-/* --- Web: www.STCMCUDATA.com  ---------------------------------------*/
-/* --- QQ:  800003751 -------------------------------------------------*/
-/* If used, note that this program includes STC documentation and code. */
-/*---------------------------------------------------------------------*/
+#ifndef CONFIG_H
+#define CONFIG_H
 
-#ifndef		__CONFIG_H
-#define		__CONFIG_H
+/* The Makefile supplies these for every translation unit. */
+#if !defined(__CONF_MCU_MODEL) || !defined(__CONF_FOSC) || !defined(__CONF_CLKDIV)
+#error Define the board MCU and clock configuration before including the HAL
+#endif
 
-/*********************************************************/
-
-//#define MAIN_Fosc		22118400L	//Define the main clock.
-//#define MAIN_Fosc		12000000L	//Define the main clock.
-//#define MAIN_Fosc		11059200L	//Define the main clock.
-//#define MAIN_Fosc		 5529600L	//Define the main clock.
-#define MAIN_Fosc		33177600L	//Define the main clock.
-
-#include "STC8XXXX.H"
-
-#define STC8Hxx		//STC8H series.
-//#define STC8Gxx		//STC8G series.
-
-/*********************************************************/
-
-
+#include "fw_conf.h"
+#include "fw_types.h"
 
 #endif

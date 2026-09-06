@@ -1,4 +1,3 @@
-#include "STC8XXXX.H"
 #include "oled.h"
 #include "oledfont.h"  	
 #include <math.h>
@@ -10,8 +9,8 @@ unsigned char _buf[128*8]={0};
 const unsigned char __code height=8;
 const unsigned char __code width=128;
 
-bit _OLED_Reverse = 0;     
-bit _OLED_Overlap = 1;
+__BIT _OLED_Reverse = 0;
+__BIT _OLED_Overlap = 1;
 
 static unsigned char __x, __y;
 
@@ -58,7 +57,7 @@ void OLED_DisplayTurn(u8 i)
 //Delay
 void IIC_delay(void)
 {
-	_nop_();
+	NOP();
 }
 
 //Start signal
@@ -190,9 +189,9 @@ void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey)
 	}
 }
 //Compute m^n
-u32 oled_pow(u8 m,u8 n)
+uint16_t oled_pow(u8 m,u8 n)
 {
-	u32 result=1;	 
+	uint16_t result=1;
 	while(n--)result*=m;    
 	return result;
 }				  
@@ -201,7 +200,7 @@ u32 oled_pow(u8 m,u8 n)
 //num: number to display
 //len: number of digits
 //sizey: font size		  
-void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 sizey)
+void OLED_ShowNum(u8 x,u8 y,uint16_t num,u8 len,u8 sizey)
 {         	
 	u8 t,temp,m=0;
 	u8 enshow=0;
@@ -273,11 +272,10 @@ void OLED_Init(void)
 	OLED_SCL_Set();
 	OLED_SDA_Set();
 	//SCL is push-pull; SDA is quasi-bidirectional so ACK can pull it low.
-	P3M1 &= (u8)~0x60;
-	P3M0 = (P3M0 & (u8)~0x40) | 0x20;
+	GPIO_P3_SetMode(OLED_SCL_PIN, GPIO_Mode_Output_PP);
+	GPIO_P3_SetMode(OLED_SDA_PIN, GPIO_Mode_InOut_QBD);
 	OLED_RES_Set();
-	P2M1 &= (u8)~0x08;
-	P2M0 |= 0x08;
+	GPIO_P2_SetMode(OLED_RES_PIN, GPIO_Mode_Output_PP);
 	OLED_RES_Clr();
   delay_ms(200);
 	OLED_RES_Set();
@@ -430,7 +428,7 @@ void OLED_display_clear(void)
 	memset(_buf, 0x00, width * height);
 }
 
-void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, bit reserve_hl)
+void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, __BIT reserve_hl)
 {
     if (_OLED_Overlap)
     {

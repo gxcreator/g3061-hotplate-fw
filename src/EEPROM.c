@@ -1,5 +1,8 @@
 #include "config.h"
 #include "EEPROM.h"
+#include "fw_iap.h"
+
+//Select IAP_CMD directly: vendor command macros trigger IAP and force EA = 1.
 
 //========================================================================
 // Function: void ISP_Disable(void)
@@ -32,13 +35,13 @@ void EEPROM_Trig(void)
 	IAP_TRIG = 0xA5;                    //Write 5AH, then A5H to the trigger register each time.
 																			//Writing A5H triggers the IAP command immediately.
 																			//The CPU waits for IAP completion before continuing.
-	_nop_();
-	_nop_();
+	NOP();
+	NOP();
 	EA = F0;    //Restore the global interrupt state.
 }
 
 //========================================================================
-// Function: void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
+// Function: void EEPROM_read_n(uint16_t EE_address,uint8_t *DataAddress,uint16_t number)
 // Description: Read n bytes from an EEPROM address into a buffer.
 // Parameters: EE_address:  Starting EEPROM address.
 //             DataAddress: Destination buffer address.
@@ -46,16 +49,17 @@ void EEPROM_Trig(void)
 // Returns: non.
 // Version: V1.0, 2012-10-22
 //========================================================================
-void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
+void EEPROM_read_n(uint16_t EE_address,uint8_t *DataAddress,uint16_t number)
 {
-	IAP_ENABLE();                           //Set the wait time and enable IAP once.
-	IAP_READ();                             //Issue the byte-read command once while unchanged.
+	IAP_CONTR = 0x80;                       //Enable IAP and clear stale control flags.
+	IAP_SetWaitTime();
+	IAP_CMD = 1;                            //Issue the byte-read command once while unchanged.
 	do
 	{
-		IAP_ADDRH = EE_address / 256;       //Write the high address byte when the address changes.
-		IAP_ADDRL = EE_address % 256;       //Write the low address byte.
+		IAP_ADDRH = (uint8_t)(EE_address >> 8);
+		IAP_ADDRL = (uint8_t)EE_address;
 		EEPROM_Trig();                      //Trigger the EEPROM operation.
-		*DataAddress = IAP_DATA;            //Store the read data in the buffer.
+		*DataAddress = IAP_ReadData();      //Store the read data in the buffer.
 		EE_address++;
 		DataAddress++;
 	}while(--number);
@@ -64,26 +68,27 @@ void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
 }
 
 //========================================================================
-// Function: void EEPROM_SectorErase(u16 EE_address)
+// Function: void EEPROM_SectorErase(uint16_t EE_address)
 // Description: Erase the EEPROM sector at the specified address.
 // Parameters: EE_address: Address of the EEPROM sector to erase.
 // Returns: non.
 // Version: V1.0, 2013-5-10
 //========================================================================
-void EEPROM_SectorErase(u16 EE_address)
+void EEPROM_SectorErase(uint16_t EE_address)
 {
-	IAP_ENABLE();                       //Set the wait time and enable IAP once.
-	IAP_ERASE();                        //Issue the sector-erase command once while unchanged.
+	IAP_CONTR = 0x80;                   //Enable IAP and clear stale control flags.
+	IAP_SetWaitTime();
+	IAP_CMD = 3;                        //Issue the sector-erase command once while unchanged.
 																			//Only sector erase is supported; each sector is 512 bytes.
 																			//Any byte address in a sector identifies that sector.
-	IAP_ADDRH = EE_address / 256;       //Write the high sector-address byte when the address changes.
-	IAP_ADDRL = EE_address % 256;       //Write the low sector-address byte.
+	IAP_ADDRH = (uint8_t)(EE_address >> 8);
+	IAP_ADDRL = (uint8_t)EE_address;
 	EEPROM_Trig();                      //Trigger the EEPROM operation.
 	DisableEEPROM();                    //Disable EEPROM operations.
 }
 
 //========================================================================
-// Function: void EEPROM_write_n(u16 EE_address,u8 *DataAddress,u16 number)
+// Function: void EEPROM_write_n(uint16_t EE_address,uint8_t *DataAddress,uint16_t number)
 // Description: Write n buffer bytes to an EEPROM address.
 // Parameters: EE_address:  Starting EEPROM address.
 //             DataAddress: Source buffer address.
@@ -91,15 +96,16 @@ void EEPROM_SectorErase(u16 EE_address)
 // Returns: non.
 // Version: V1.0, 2012-10-22
 //========================================================================
-void EEPROM_write_n(u16 EE_address,u8 *DataAddress,u16 number)
+void EEPROM_write_n(uint16_t EE_address,uint8_t *DataAddress,uint16_t number)
 {
-	IAP_ENABLE();                       //Set the wait time and enable IAP once.
-	IAP_WRITE();                        //Issue the byte-write command.
+	IAP_CONTR = 0x80;                   //Enable IAP and clear stale control flags.
+	IAP_SetWaitTime();
+	IAP_CMD = 2;                        //Issue the byte-write command.
 	do
 	{
-		IAP_ADDRH = EE_address / 256;     //Write the high address byte when the address changes.
-		IAP_ADDRL = EE_address % 256;     //Write the low address byte.
-		IAP_DATA  = *DataAddress;         //Write IAP_DATA again only when the data changes.
+		IAP_ADDRH = (uint8_t)(EE_address >> 8);
+		IAP_ADDRL = (uint8_t)EE_address;
+		IAP_WriteData(*DataAddress);     //Write IAP_DATA again only when the data changes.
 		EEPROM_Trig();                    //Trigger the EEPROM operation.
 		EE_address++;                     //Next address.
 		DataAddress++;                    //Next data byte.
