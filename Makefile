@@ -39,7 +39,7 @@ LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
 SRCS := main.c ADC.c temperature.c oled.c soft_i2c.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
-RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
+RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/fw_sys.rel $(BUILD)/fw_adc.rel $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(HAL_DIR)/include/*.h)
 
 all: $(BUILD)/$(TARGET).hex
@@ -75,6 +75,13 @@ $(BUILD):
 $(BUILD)/%.rel: $(SRC_DIR)/%.c $(HDRS) Makefile | $(BUILD)
 	$(SDCC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/fw_sys.rel: $(HAL_DIR)/src/fw_sys.c $(HDRS) Makefile | $(BUILD)
+	# Upstream ticks_ms/ticks_us use read-only __code without const (SDCC 356).
+	$(SDCC) $(CFLAGS) --disable-warning 356 -c $< -o $@
+
+$(BUILD)/fw_adc.rel: $(HAL_DIR)/src/fw_adc.c $(HDRS) Makefile | $(BUILD)
+	$(SDCC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/%.rel: $(SRC_DIR)/%.asm Makefile | $(BUILD)
 	$(SDAS8051) -plosgff $@ $<
 
@@ -87,7 +94,7 @@ $(BUILD)/$(TARGET).hex: $(BUILD)/$(TARGET).ihx
 test: $(BUILD)/hal_test
 	"$(BUILD)/hal_test"
 
-$(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(SRC_DIR)/soft_i2c.c $(HDRS) Makefile | $(BUILD)
+$(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(HAL_DIR)/src/fw_adc.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(SRC_DIR)/soft_i2c.c $(HDRS) Makefile | $(BUILD)
 	$(HOST_CC) -std=c11 -O2 -Wall -Wextra -Werror -Wno-parentheses \
 		-I$(HAL_DIR)/include $< -o $@
 

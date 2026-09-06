@@ -11,6 +11,7 @@
  * I2C observations are mock pin values at NOPs, not physical waveforms;
  * they do not cover edges between NOPs, bus timing or slave ACK/NACK.
  * main.c initialization and GPIO setup other than i2c_init are not included.
+ * SYS_DelayUs is mocked to check ADC delay requests, not elapsed time.
  */
 #include <assert.h>
 #include <stdint.h>
@@ -38,33 +39,47 @@ static volatile uint8_t P35, P36, P3M0, P3M1;
 static void mock_nop(void);
 #define NOP() mock_nop()
 #include "../src/ADC.c"
+#include "../lib/FwLib_STC8/src/fw_adc.c"
 #include "../src/EEPROM.c"
 #include "../src/timer0.c"
 #include "../src/soft_i2c.c"
 
 static uint8_t eeprom[0x800];
 static unsigned adc_pending, adc_channel, adc_code, adc_completions;
+static unsigned adc_delay_calls, adc_nops;
 static unsigned iap_active, iap_command, iap_address, iap_count, iap_nops;
 static uint8_t initial_ea;
 static unsigned i2c_capture, i2c_nops;
 static struct { uint8_t scl, sda; } i2c_states[16];
 
+void SYS_DelayUs(uint16_t t)
+{
+    assert(!i2c_capture && !iap_active && !adc_pending);
+    ++adc_delay_calls;
+    assert(t == 20);
+    assert((ADC_CONTR & 0x10) == 0);
+}
+
 static void mock_nop(void)
 {
+    if (adc_pending) {
+        assert(!i2c_capture && !iap_active);
+        assert(ADC_CONTR == (0xC0 | adc_channel));
+        /* Simulate completion at the second NOP in ADC_ConvertHP(). */
+        if (++adc_nops == 2) {
+            ADC_RES = (uint8_t)(adc_code >> 8);
+            ADC_RESL = (uint8_t)adc_code;
+            ADC_CONTR = (uint8_t)(0xA0 | adc_channel);
+            adc_pending = 0;
+            ++adc_completions;
+        }
+    }
     if (i2c_capture) {
         assert(!adc_pending && !iap_active);
         assert(i2c_nops < sizeof i2c_states / sizeof i2c_states[0]);
         i2c_states[i2c_nops].scl = P35;
         i2c_states[i2c_nops].sda = P36;
         ++i2c_nops;
-    }
-    if (adc_pending) {
-        assert(ADC_CONTR == (0xC0 | adc_channel));
-        ADC_RES = (uint8_t)(adc_code >> 8);
-        ADC_RESL = (uint8_t)adc_code;
-        ADC_CONTR = (uint8_t)(0xA0 | adc_channel);
-        adc_pending = 0;
-        ++adc_completions;
     }
     if (iap_active) {
         unsigned address = ((unsigned)IAP_ADDRH << 8) | IAP_ADDRL;
@@ -97,13 +112,24 @@ static void test_adc(void)
     assert(!i2c_capture);
     for (saved = 0; saved < 256; ++saved) {
         P_SW2 = (uint8_t)saved;
-        ADCTIM = ADCCFG = ADC_CONTR = ADC_RES = ADC_RESL = 0xFF;
+        SFRX_ON();//Match the application-wide startup policy.
+        assert(P_SW2 == (saved | 0x80u));
+        /* Exercise all initial field values and preserve unrelated bits. */
+        ADCTIM = ADCCFG = ADC_CONTR = ADC_RES = (uint8_t)saved;
+        ADC_RESL = (uint8_t)~saved;
+        adc_delay_calls = 0;
         adc_init();
-        assert(P_SW2 == saved);
+        assert(adc_delay_calls == 1);
+        assert(P_SW2 == (saved | 0x80u));
         assert(ADCTIM == 0x3F);
-        assert(ADCCFG == 0x2F);
-        assert(ADC_CONTR == 0 && ADC_RES == 0 && ADC_RESL == 0);
+        assert(ADCCFG == (saved | 0x2Fu));
+        assert(ADC_CONTR == (saved & ~0x10u));
+        assert(ADC_RES == saved && ADC_RESL == (uint8_t)~saved);
     }
+    /* Normal startup configures reset-state registers without clearing results. */
+    ADCCFG = ADC_CONTR = 0;
+    adc_init();
+    assert(ADCCFG == 0x2F && ADC_CONTR == 0);
     for (channel = 0; channel < 16; ++channel) {
         for (code = 0; code < 4096; ++code) {
             adc_channel = channel;
@@ -112,7 +138,11 @@ static void test_adc(void)
             /* Stale completion flag and wrong channel must be replaced. */
             ADC_CONTR = (uint8_t)(0x20 | (channel ^ 15));
             ADC_RES = ADC_RESL = 0xFF;
+            adc_delay_calls = 0;
+            adc_nops = 0;
             assert(get_adc(channel) == code);
+            assert(adc_delay_calls == 0);
+            assert(adc_nops == 2);
             assert(adc_pending == 0);
             assert(ADC_CONTR == (0x80 | channel));
             assert(ADCCFG == 0x2F && ADCTIM == 0x3F);
@@ -120,6 +150,13 @@ static void test_adc(void)
         }
     }
     assert(adc_completions == 16 * 4096);
+    adc_pending = 1;
+    adc_nops = 0;
+    assert(get_adc(16) == 0xFFFFu);
+    assert(get_adc(0xFFFFu) == 0xFFFFu);
+    assert(adc_pending == 1 && adc_nops == 0 && adc_delay_calls == 0);
+    assert(ADC_CONTR == 0x8F && ADC_RES == 0x0F && ADC_RESL == 0xFF);
+    adc_pending = 0;
 }
 
 static void begin_iap(unsigned command, unsigned address, unsigned count,

@@ -79,6 +79,8 @@ void init(void)
 	/* Set the off latch before enabling the heater's push-pull driver. */
 	heat=0;
 	GPIO_P3_SetMode(HEATER_PIN, GPIO_Mode_Output_PP);
+	/* Keep extended-register access enabled for all peripheral drivers. */
+	SFRX_ON();
 	swclose=0;
 	EEPROM_read_n(0x0000,&eeptart[0],2);
 	EEPROM_read_n(0x0200,&eepkp[0],2);
