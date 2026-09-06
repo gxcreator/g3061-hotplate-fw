@@ -37,7 +37,7 @@ CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc \
            -I$(HAL_DIR)/include $(HAL_FLAGS)
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
-SRCS := main.c ADC.c temperature.c oled.c EEPROM.c timer0.c
+SRCS := main.c ADC.c temperature.c oled.c soft_i2c.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
 RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(HAL_DIR)/include/*.h)
@@ -87,7 +87,7 @@ $(BUILD)/$(TARGET).hex: $(BUILD)/$(TARGET).ihx
 test: $(BUILD)/hal_test
 	"$(BUILD)/hal_test"
 
-$(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(HDRS) Makefile | $(BUILD)
+$(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(SRC_DIR)/soft_i2c.c $(HDRS) Makefile | $(BUILD)
 	$(HOST_CC) -std=c11 -O2 -Wall -Wextra -Werror -Wno-parentheses \
 		-I$(HAL_DIR)/include $< -o $@
 

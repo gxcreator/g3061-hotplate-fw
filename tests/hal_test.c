@@ -8,7 +8,9 @@
  * host int is normally 32 bits, while SDCC int is 16 bits. NOP observations
  * cannot verify the intermediate 0x5A trigger write or extended-SFR access.
  * Zero-length EEPROM calls intentionally remain untested (production do/while).
- * main.c initialization and GPIO setup are not included.
+ * I2C observations are mock pin values at NOPs, not physical waveforms;
+ * they do not cover edges between NOPs, bus timing or slave ACK/NACK.
+ * main.c initialization and GPIO setup other than i2c_init are not included.
  */
 #include <assert.h>
 #include <stdint.h>
@@ -31,20 +33,31 @@ static volatile uint8_t P_SW2, ADCTIM, ADCCFG, ADC_CONTR, ADC_RES, ADC_RESL;
 static volatile uint8_t EA, F0, IAP_CONTR, IAP_CMD, IAP_TRIG;
 static volatile uint8_t IAP_ADDRH, IAP_ADDRL, IAP_DATA, IAP_TPS;
 static volatile uint8_t AUXR, TMOD, TH0, TL0, TF0, TR0, ET0, T2H, T2L, IE2;
+static volatile uint8_t P35, P36, P3M0, P3M1;
 
 static void mock_nop(void);
 #define NOP() mock_nop()
 #include "../src/ADC.c"
 #include "../src/EEPROM.c"
 #include "../src/timer0.c"
+#include "../src/soft_i2c.c"
 
 static uint8_t eeprom[0x800];
 static unsigned adc_pending, adc_channel, adc_code, adc_completions;
 static unsigned iap_active, iap_command, iap_address, iap_count, iap_nops;
 static uint8_t initial_ea;
+static unsigned i2c_capture, i2c_nops;
+static struct { uint8_t scl, sda; } i2c_states[16];
 
 static void mock_nop(void)
 {
+    if (i2c_capture) {
+        assert(!adc_pending && !iap_active);
+        assert(i2c_nops < sizeof i2c_states / sizeof i2c_states[0]);
+        i2c_states[i2c_nops].scl = P35;
+        i2c_states[i2c_nops].sda = P36;
+        ++i2c_nops;
+    }
     if (adc_pending) {
         assert(ADC_CONTR == (0xC0 | adc_channel));
         ADC_RES = (uint8_t)(adc_code >> 8);
@@ -81,6 +94,7 @@ static void mock_nop(void)
 static void test_adc(void)
 {
     unsigned saved, channel, code;
+    assert(!i2c_capture);
     for (saved = 0; saved < 256; ++saved) {
         P_SW2 = (uint8_t)saved;
         ADCTIM = ADCCFG = ADC_CONTR = ADC_RES = ADC_RESL = 0xFF;
@@ -112,6 +126,7 @@ static void begin_iap(unsigned command, unsigned address, unsigned count,
                       uint8_t ea)
 {
     assert(count > 0);
+    assert(!i2c_capture);
     initial_ea = EA = ea;
     F0 = (uint8_t)!ea;
     IAP_CONTR = IAP_CMD = IAP_TRIG = IAP_TPS = 0xFF;
@@ -217,11 +232,81 @@ static void test_timers(void)
     }
 }
 
+static void test_soft_i2c(void)
+{
+    unsigned m0, m1, value, bit, pins;
+    assert(!adc_pending && !iap_active);
+    i2c_capture = 1;
+    i2c_nops = 0;
+    for (m0 = 0; m0 < 256; ++m0) {
+        for (m1 = 0; m1 < 256; ++m1) {
+            P3M0 = (uint8_t)m0;
+            P3M1 = (uint8_t)m1;
+            P35 = P36 = 0;
+            i2c_init();
+            assert(P35 == 1 && P36 == 1);
+            /* P3.5 push-pull, P3.6 quasi-bidirectional; other pins unchanged. */
+            assert(P3M0 == ((m0 & ~0x60u) | 0x20u));
+            assert(P3M1 == (m1 & ~0x60u));
+            assert(i2c_nops == 0);
+        }
+    }
+    for (pins = 0; pins < 4; ++pins) {
+        P35 = (uint8_t)(pins >> 1);
+        P36 = (uint8_t)(pins & 1);
+        i2c_nops = 0;
+        i2c_start();
+        assert(i2c_nops == 2);
+        assert(i2c_states[0].scl == 1 && i2c_states[0].sda == 1);
+        assert(i2c_states[1].scl == 1 && i2c_states[1].sda == 0);
+        assert(P35 == 0 && P36 == 0);
+    }
+    /* Stop and ACK clock enter with SCL low; exercise either SDA value. */
+    for (pins = 0; pins < 2; ++pins) {
+        P35 = 0;
+        P36 = (uint8_t)pins;
+        i2c_nops = 0;
+        i2c_stop();
+        assert(i2c_nops == 3);
+        assert(i2c_states[0].scl == 0 && i2c_states[0].sda == 0);
+        assert(i2c_states[1].scl == 1 && i2c_states[1].sda == 0);
+        assert(i2c_states[2].scl == 1 && i2c_states[2].sda == 1);
+        assert(P35 == 1 && P36 == 1);
+
+        P35 = 0;
+        P36 = (uint8_t)pins;
+        i2c_nops = 0;
+        i2c_clock_ack();
+        assert(i2c_nops == 3);
+        assert(i2c_states[0].scl == 0 && i2c_states[0].sda == 1);
+        assert(i2c_states[1].scl == 1 && i2c_states[1].sda == 1);
+        assert(i2c_states[2].scl == 0 && i2c_states[2].sda == 1);
+        assert(P35 == 0 && P36 == 1);
+    }
+    for (value = 0; value < 256; ++value) {
+        P35 = 1;
+        P36 = (uint8_t)!(value & 0x80);
+        i2c_nops = 0;
+        i2c_write_byte((uint8_t)value);
+        assert(i2c_nops == 16);
+        for (bit = 0; bit < 8; ++bit) {
+            unsigned expected = (value >> (7 - bit)) & 1;
+            assert(i2c_states[2 * bit].scl == 0);
+            assert(i2c_states[2 * bit + 1].scl == 1);
+            assert(i2c_states[2 * bit].sda == expected);
+            assert(i2c_states[2 * bit + 1].sda == expected);
+        }
+        assert(P35 == 0 && P36 == (value & 1));
+    }
+    i2c_capture = 0;
+}
+
 int main(void)
 {
     test_adc();
     test_eeprom();
     test_timers();
-    puts("HAL host tests passed: ADC, EEPROM, Timer0, standalone Timer2");
+    test_soft_i2c();
+    puts("HAL host tests passed: ADC, EEPROM, Timer0, standalone Timer2, software I2C");
     return 0;
 }

@@ -11,12 +11,6 @@
 
 //-----------------OLED port definitions----------------
 
-#define OLED_SCL_Clr() OLED_SCL=0
-#define OLED_SCL_Set() OLED_SCL=1
-
-#define OLED_SDA_Clr() OLED_SDA=0
-#define OLED_SDA_Set() OLED_SDA=1
-
 #define OLED_RES_Clr() OLED_RES=0
 #define OLED_RES_Set() OLED_RES=1
 

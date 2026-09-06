@@ -1,4 +1,5 @@
 #include "oled.h"
+#include "i2c.h"
 #include "oledfont.h"  	
 #include <math.h>
 #include <stdlib.h>
@@ -54,83 +55,20 @@ void OLED_DisplayTurn(u8 i)
 		}
 }
 
-//Delay
-void IIC_delay(void)
-{
-	NOP();
-}
-
-//Start signal
-void I2C_Start(void)
-{
-	OLED_SDA_Set();
-	OLED_SCL_Set();
-	IIC_delay();
-	OLED_SDA_Clr();
-	IIC_delay();
-	OLED_SCL_Clr();
-	 
-}
-
-//Stop signal
-void I2C_Stop(void)
-{
-	OLED_SDA_Clr();
-	IIC_delay();
-	OLED_SCL_Set();
-	IIC_delay();
-	OLED_SDA_Set();
-	IIC_delay();
-}
-
-//Clock the ACK bit with SDA released; the response is not checked.
-void I2C_WaitAck(void)
-{
-	OLED_SDA_Set();
-	IIC_delay();
-	OLED_SCL_Set();
-	IIC_delay();
-	OLED_SCL_Clr();
-	IIC_delay();
-}
-
-//Write one byte
-void Send_Byte(u8 dat)
-{
-	u8 i;
-	for(i=0;i<8;i++)
-	{
-		OLED_SCL_Clr();//Set the clock signal low
-		if(dat&0x80)//Write the eight data bits from MSB to LSB
-		{
-			OLED_SDA_Set();
-    }
-		else
-		{
-			OLED_SDA_Clr();
-    }
-		IIC_delay();
-		OLED_SCL_Set();
-		IIC_delay();
-		OLED_SCL_Clr();
-		dat<<=1;
-  }
-}
-
 //Send one byte
 //Write one byte to the SSD1306.
 //mode: data/command flag; 0 selects command, 1 selects data.
 void OLED_WR_Byte(u8 dat,u8 mode)
 {
-	I2C_Start();
-	Send_Byte(0x78);
-	I2C_WaitAck();
-	if(mode){Send_Byte(0x40);}
-  else{Send_Byte(0x00);}
-	I2C_WaitAck();
-	Send_Byte(dat);
-	I2C_WaitAck();
-	I2C_Stop();
+	i2c_start();
+	i2c_write_byte(0x78);
+	i2c_clock_ack();
+	if(mode){i2c_write_byte(0x40);}
+  else{i2c_write_byte(0x00);}
+	i2c_clock_ack();
+	i2c_write_byte(dat);
+	i2c_clock_ack();
+	i2c_stop();
 }
 
 //Set coordinates
@@ -269,11 +207,7 @@ void OLED_DrawBMP(int x,int y,unsigned char sizex, unsigned char sizey,const uns
 //Initialize				    
 void OLED_Init(void)
 {
-	OLED_SCL_Set();
-	OLED_SDA_Set();
-	//SCL is push-pull; SDA is quasi-bidirectional so ACK can pull it low.
-	GPIO_P3_SetMode(OLED_SCL_PIN, GPIO_Mode_Output_PP);
-	GPIO_P3_SetMode(OLED_SDA_PIN, GPIO_Mode_InOut_QBD);
+	i2c_init();
 	OLED_RES_Set();
 	GPIO_P2_SetMode(OLED_RES_PIN, GPIO_Mode_Output_PP);
 	OLED_RES_Clr();
