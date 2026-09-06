@@ -50,18 +50,18 @@ static uint32_t adc_delay_calls, adc_nops;
 static uint32_t iap_active, iap_command, iap_address, iap_count, iap_nops;
 static uint8_t initial_ea;
 static uint32_t i2c_capture, i2c_nops;
-static struct { uint8_t scl, sda; } i2c_states[16];
+static struct {
+    uint8_t scl, sda;
+} i2c_states[16];
 
-void SYS_DelayUs(uint16_t t)
-{
+void SYS_DelayUs(uint16_t t) {
     assert(!i2c_capture && !iap_active && !adc_pending);
     ++adc_delay_calls;
     assert(t == 20);
     assert((ADC_CONTR & 0x10) == 0);
 }
 
-static void mock_nop(void)
-{
+static void mock_nop(void) {
     if (adc_pending) {
         assert(!i2c_capture && !iap_active);
         assert(ADC_CONTR == (0xC0 | adc_channel));
@@ -96,23 +96,29 @@ static void mock_nop(void)
         /* One operation per trigger, not one per NOP. */
         if ((iap_nops & 1) == 0) {
             switch (IAP_CMD) {
-            case 1: IAP_DATA = eeprom[address]; break;
-            case 2: eeprom[address] &= IAP_DATA; break;
-            case 3: memset(eeprom + (address & ~0x1FFu), 0xFF, 512); break;
-            default: assert(0);
+            case 1:
+                IAP_DATA = eeprom[address];
+                break;
+            case 2:
+                eeprom[address] &= IAP_DATA;
+                break;
+            case 3:
+                memset(eeprom + (address & ~0x1FFu), 0xFF, 512);
+                break;
+            default:
+                assert(0);
             }
         }
         ++iap_nops;
     }
 }
 
-static void test_adc(void)
-{
+static void test_adc(void) {
     uint32_t saved, channel, code;
     assert(!i2c_capture);
     for (saved = 0; saved < 256; ++saved) {
         P_SW2 = (uint8_t)saved;
-        SFRX_ON();//Match the application-wide startup policy.
+        SFRX_ON(); // Match the application-wide startup policy.
         assert(P_SW2 == (saved | 0x80u));
         /* Exercise all initial field values and preserve unrelated bits. */
         ADCTIM = ADCCFG = ADC_CONTR = ADC_RES = (uint8_t)saved;
@@ -159,9 +165,7 @@ static void test_adc(void)
     adc_pending = 0;
 }
 
-static void begin_iap(uint32_t command, uint32_t address, uint32_t count,
-                      uint8_t ea)
-{
+static void begin_iap(uint32_t command, uint32_t address, uint32_t count, uint8_t ea) {
     assert(count > 0);
     assert(!i2c_capture);
     initial_ea = EA = ea;
@@ -175,8 +179,7 @@ static void begin_iap(uint32_t command, uint32_t address, uint32_t count,
     iap_active = 1;
 }
 
-static void end_iap(void)
-{
+static void end_iap(void) {
     assert(iap_nops == 2 * iap_count);
     assert(EA == initial_ea);
     assert(IAP_CONTR == 0 && IAP_CMD == 0 && IAP_TRIG == 0);
@@ -184,15 +187,12 @@ static void end_iap(void)
     iap_active = 0;
 }
 
-static void test_eeprom(void)
-{
+static void test_eeprom(void) {
     /* Current main.c settings layout, plus byte/sector boundary transfers. */
-    static const struct { uint16_t address, count; } cases[] = {
-        {0x0000, 2}, {0x0200, 2}, {0x0204, 2}, {0x0208, 2},
-        {0x0400, 2}, {0x0404, 2}, {0x0600, 1},
-        {0x00FE, 4}, {0x01FE, 260}, {0x03FE, 4}, {0x05FE, 4},
-        {0x07FF, 1}
-    };
+    static const struct {
+        uint16_t address, count;
+    } cases[] = {{0x0000, 2}, {0x0200, 2}, {0x0204, 2},   {0x0208, 2}, {0x0400, 2}, {0x0404, 2},
+                 {0x0600, 1}, {0x00FE, 4}, {0x01FE, 260}, {0x03FE, 4}, {0x05FE, 4}, {0x07FF, 1}};
     uint8_t expected[sizeof eeprom], input[260], output[262];
     uint32_t ea, c, i, pass, sector;
     for (ea = 0; ea < 2; ++ea) {
@@ -237,8 +237,7 @@ static void test_eeprom(void)
     }
 }
 
-static void test_timers(void)
-{
+static void test_timers(void) {
     uint32_t mode, aux, bit;
     for (mode = 0; mode < 256; ++mode) {
         for (aux = 0; aux < 256; ++aux) {
@@ -247,7 +246,9 @@ static void test_timers(void)
                 AUXR = (uint8_t)aux;
                 TF0 = TR0 = ET0 = EA = (uint8_t)bit;
                 TH0 = TL0 = 0xFF;
-                T2H = 0x12; T2L = 0x34; IE2 = 0xA5;
+                T2H = 0x12;
+                T2L = 0x34;
+                IE2 = 0xA5;
                 Timer0Init();
                 assert(TMOD == (mode & 0xF0));
                 assert(AUXR == (aux | 0x80));
@@ -269,8 +270,7 @@ static void test_timers(void)
     }
 }
 
-static void test_soft_i2c(void)
-{
+static void test_soft_i2c(void) {
     uint32_t m0, m1, value, bit, pins;
     assert(!adc_pending && !iap_active);
     i2c_capture = 1;
@@ -338,8 +338,7 @@ static void test_soft_i2c(void)
     i2c_capture = 0;
 }
 
-int main(void)
-{
+int main(void) {
     test_adc();
     test_eeprom();
     test_timers();
