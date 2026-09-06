@@ -5,19 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned char _buf[128*8]={0};
+uint8_t _buf[128*8]={0};
 
-const unsigned char __code height=8;
-const unsigned char __code width=128;
+const uint8_t __code height=8;
+const uint8_t __code width=128;
 
 __BIT _OLED_Reverse = 0;
 __BIT _OLED_Overlap = 1;
 
-static unsigned char __x, __y;
+static uint8_t __x, __y;
 
-void delay_ms(unsigned int ms)
+void delay_ms(uint16_t ms)
 {
-	volatile unsigned int a;
+	volatile uint16_t a;
 	while(ms)
 	{
 		a=1800;
@@ -28,7 +28,7 @@ void delay_ms(unsigned int ms)
 }
 
 //Display inversion
-void OLED_ColorTurn(u8 i)
+void OLED_ColorTurn(uint8_t i)
 {
 	if(i==0)
 		{
@@ -41,7 +41,7 @@ void OLED_ColorTurn(u8 i)
 }
 
 //Rotate display 180 degrees
-void OLED_DisplayTurn(u8 i)
+void OLED_DisplayTurn(uint8_t i)
 {
 	if(i==0)
 		{
@@ -58,7 +58,7 @@ void OLED_DisplayTurn(u8 i)
 //Send one byte
 //Write one byte to the SSD1306.
 //mode: data/command flag; 0 selects command, 1 selects data.
-void OLED_WR_Byte(u8 dat,u8 mode)
+void OLED_WR_Byte(uint8_t dat,uint8_t mode)
 {
 	i2c_start();
 	i2c_write_byte(0x78);
@@ -72,7 +72,7 @@ void OLED_WR_Byte(u8 dat,u8 mode)
 }
 
 //Set coordinates
-void OLED_Set_Pos(u8 x, u8 y) 
+void OLED_Set_Pos(uint8_t x, uint8_t y)
 { 
 	OLED_WR_Byte(0xb0+y,OLED_CMD);
 	OLED_WR_Byte(((x&0xf0)>>4)|0x10,OLED_CMD);
@@ -95,7 +95,7 @@ void OLED_Display_Off(void)
 //Clear the display to black.	  
 void OLED_Clear(void)  
 {  
-	u8 i,n;		    
+	uint8_t i,n;
 	for(i=0;i<8;i++)  
 	{  
 		OLED_WR_Byte (0xb0+i,OLED_CMD);    //Set page address (0-7)
@@ -109,10 +109,10 @@ void OLED_Clear(void)
 //x:0~127
 //y:0~63				 
 //sizey: select 6x8 or 8x16 font
-void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey)
+void OLED_ShowChar(uint8_t x,uint8_t y,uint8_t chr,uint8_t sizey)
 {      	
-	u8 c=0,sizex=sizey/2;
-	u16 i=0,size1;
+	uint8_t c=0,sizex=sizey/2;
+	uint16_t i=0,size1;
 	if(sizey==8)size1=6;
 	else size1=(sizey/8+((sizey%8)?1:0))*(sizey/2);
 	c=chr-' ';//Get the offset font index
@@ -127,7 +127,7 @@ void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey)
 	}
 }
 //Compute m^n
-uint16_t oled_pow(u8 m,u8 n)
+uint16_t oled_pow(uint8_t m,uint8_t n)
 {
 	uint16_t result=1;
 	while(n--)result*=m;    
@@ -138,10 +138,10 @@ uint16_t oled_pow(u8 m,u8 n)
 //num: number to display
 //len: number of digits
 //sizey: font size		  
-void OLED_ShowNum(u8 x,u8 y,uint16_t num,u8 len,u8 sizey)
+void OLED_ShowNum(uint8_t x,uint8_t y,uint16_t num,uint8_t len,uint8_t sizey)
 {         	
-	u8 t,temp,m=0;
-	u8 enshow=0;
+	uint8_t t,temp,m=0;
+	uint8_t enshow=0;
 	if(sizey==8)m=2;
 	for(t=0;t<len;t++)
 	{
@@ -159,9 +159,9 @@ void OLED_ShowNum(u8 x,u8 y,uint16_t num,u8 len,u8 sizey)
 }
 
 //Display a string
-void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey)
+void OLED_ShowString(uint8_t x,uint8_t y,const uint8_t *chr,uint8_t sizey)
 {
-	u8 j=0;
+	uint8_t j=0;
 	while (chr[j]!='\0')
 	{		
 		OLED_ShowChar(x,y,chr[j++],sizey);
@@ -170,9 +170,9 @@ void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey)
 	}
 }
 //Display Chinese characters
-//void OLED_ShowChinese(u8 x,u8 y,u8 no,u8 sizey)
+//void OLED_ShowChinese(uint8_t x,uint8_t y,uint8_t no,uint8_t sizey)
 //{
-//	u16 i,size1=(sizey/8+((sizey%8)?1:0))*sizey;
+//	uint16_t i,size1=(sizey/8+((sizey%8)?1:0))*sizey;
 //	for(i=0;i<size1;i++)
 //	{
 //		if(i%sizey==0) OLED_Set_Pos(x,y++);
@@ -187,10 +187,10 @@ void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey)
 //x,y: display coordinates
 //sizex,sizey: image dimensions
 //BMP: image to display
-void OLED_DrawBMP(int x,int y,unsigned char sizex, unsigned char sizey,const unsigned char BMP[])
+void OLED_DrawBMP(int16_t x,int16_t y,uint8_t sizex, uint8_t sizey,const uint8_t BMP[])
 { 	
-  int j=0;
-	int i,m;
+  int16_t j=0;
+	int16_t i,m;
 	sizey=sizey/8+((sizey%8)?1:0);
 	for(i=0;i<sizey;i++)
 	{
@@ -249,10 +249,10 @@ void OLED_Init(void)
 	OLED_Display_On();
 }
 
-void OLED_DrawPixel(unsigned char x, unsigned char y,unsigned char color)
+void OLED_DrawPixel(uint8_t x, uint8_t y,uint8_t color)
 {
-    unsigned char mask;
-    unsigned char *pBuf;
+    uint8_t mask;
+    uint8_t *pBuf;
 		if(x >= width || y >= height * 8)
 		{
 			return;
@@ -273,9 +273,9 @@ void OLED_DrawPixel(unsigned char x, unsigned char y,unsigned char color)
     }
 }
 
-void _swap_char(unsigned char* a,unsigned char* b)
+void _swap_char(uint8_t* a,uint8_t* b)
 {
-	unsigned char tmp = *a;
+	uint8_t tmp = *a;
 	*a = *b;
 	*b = tmp;
 }
@@ -286,10 +286,10 @@ void _swap_char(unsigned char* a,unsigned char* b)
 *             color is the pixel color.
 * Return: None.
 *========================================================*/
-void OLED_DrawLine(unsigned char x1,unsigned char y1,unsigned char x2,unsigned char y2, unsigned char color)
+void OLED_DrawLine(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2, uint8_t color)
 {
-	unsigned char i = 0;
-	char DeltaY = 0,DeltaX = 0;
+	uint8_t i = 0;
+	int8_t DeltaY = 0,DeltaX = 0;
 	float k = 0,b = 0;
 	if(x1>x2)
 	{
@@ -330,7 +330,7 @@ void OLED_DrawLine(unsigned char x1,unsigned char y1,unsigned char x2,unsigned c
 		{
 			for(x1;x1<=x2;x1++)
 			{
-				OLED_DrawPixel(x1,(int)(k * x1 + b),color);
+				OLED_DrawPixel(x1,(int16_t)(k * x1 + b),color);
 			}
 		}else if((k>=1)|(k<=-1))
 		{
@@ -338,13 +338,13 @@ void OLED_DrawLine(unsigned char x1,unsigned char y1,unsigned char x2,unsigned c
 			{
 				for(y1;y1<=y2;y1++)
 				{
-					OLED_DrawPixel((int)((y1 - b) / k),y1,color);
+					OLED_DrawPixel((int16_t)((y1 - b) / k),y1,color);
 				}
 			}else if(y1>y2)
 			{
 				for(y2;y2<=y1;y2++)
 				{
-					OLED_DrawPixel((int)((y2 - b) / k),y2,color);
+					OLED_DrawPixel((int16_t)((y2 - b) / k),y2,color);
 				}
 			}
 		}
@@ -362,7 +362,7 @@ void OLED_display_clear(void)
 	memset(_buf, 0x00, width * height);
 }
 
-void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, __BIT reserve_hl)
+void OLED_Draw_Byte(uint8_t *pBuf, uint8_t mask, uint8_t offset, __BIT reserve_hl)
 {
     if (_OLED_Overlap)
     {
@@ -407,13 +407,13 @@ void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offse
 }
 
 
-void OLED_DrawChar(unsigned char x, unsigned char y, unsigned char chr)
+void OLED_DrawChar(uint8_t x, uint8_t y, uint8_t chr)
 {
-    unsigned char c;
-    unsigned char i;
-    unsigned char mask;
-    unsigned char *pBuf;
-    unsigned char offset;
+    uint8_t c;
+    uint8_t i;
+    uint8_t mask;
+    uint8_t *pBuf;
+    uint8_t offset;
     offset = y & 7;
     c = chr - ' ';
 			pBuf = &_buf[(y >> 3) * width + x];
@@ -433,16 +433,16 @@ void OLED_DrawChar(unsigned char x, unsigned char y, unsigned char chr)
         }
     }
 }
-void OLED_Set_Posi(unsigned char x, unsigned char y)
+void OLED_Set_Posi(uint8_t x, uint8_t y)
 {
     __x = x;
     __y = y;
 }
 
-void OLED_DrawNum(unsigned char digit, unsigned char len)
+void OLED_DrawNum(uint8_t digit, uint8_t len)
 {
-    unsigned char t, i, temp;
-    unsigned char enshow = 0;
+    uint8_t t, i, temp;
+    uint8_t enshow = 0;
     i = 0;
     for (t = 0; t < len; t++)
     {
@@ -474,9 +474,9 @@ void OLED_DrawNum(unsigned char digit, unsigned char len)
     __x += len;
 }
 
-void OLED_DrawBMP_2(u8 x0, u8 page0, u8 xsize, u8 ysize, const u8 *BMP)
+void OLED_DrawBMP_2(uint8_t x0, uint8_t page0, uint8_t xsize, uint8_t ysize, const uint8_t *BMP)
 {
-	u16 i, j;
+	uint16_t i, j;
 	for(j = page0; j < page0+ysize/8; j++)
 	{
 		for(i = x0; i < x0+xsize; i++)

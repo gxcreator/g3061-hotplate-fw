@@ -2,9 +2,8 @@
 #define __OLED_H
 
 #include "board.h"
+#include <stdint.h>
  
-#define  u8 unsigned char 
-#define  u16 unsigned int
 	
 #define OLED_CMD  0	//Write command
 #define OLED_DATA 1	//Write data
@@ -17,33 +16,33 @@
 
 
 //OLED control functions
-void delay_ms(unsigned int ms);
-void OLED_ColorTurn(u8 i);
-void OLED_DisplayTurn(u8 i);
-void OLED_WR_Byte(u8 dat,u8 cmd);
-void OLED_Set_Pos(u8 x, u8 y);
+void delay_ms(uint16_t ms);
+void OLED_ColorTurn(uint8_t i);
+void OLED_DisplayTurn(uint8_t i);
+void OLED_WR_Byte(uint8_t dat,uint8_t cmd);
+void OLED_Set_Pos(uint8_t x, uint8_t y);
 void OLED_Display_On(void);
 void OLED_Display_Off(void);
 void OLED_Clear(void);
-void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 sizey);
-uint16_t oled_pow(u8 m,u8 n);
-void OLED_ShowNum(u8 x,u8 y,uint16_t num,u8 len,u8 sizey);
-void OLED_ShowString(u8 x,u8 y,const u8 *chr,u8 sizey);
-void OLED_ShowChinese(u8 x,u8 y,u8 no,u8 sizey);
-void OLED_DrawBMP(int x,int y,unsigned char sizex,unsigned char sizey,const unsigned char BMP[]);
+void OLED_ShowChar(uint8_t x,uint8_t y,uint8_t chr,uint8_t sizey);
+uint16_t oled_pow(uint8_t m,uint8_t n);
+void OLED_ShowNum(uint8_t x,uint8_t y,uint16_t num,uint8_t len,uint8_t sizey);
+void OLED_ShowString(uint8_t x,uint8_t y,const uint8_t *chr,uint8_t sizey);
+void OLED_ShowChinese(uint8_t x,uint8_t y,uint8_t no,uint8_t sizey);
+void OLED_DrawBMP(int16_t x,int16_t y,uint8_t sizex,uint8_t sizey,const uint8_t BMP[]);
 void OLED_Init(void);
 void OLED_Display(void);
-void OLED_Write_Data(unsigned char dat);
-void OLED_DrawPixel(unsigned char x,unsigned char y,unsigned char color);
+void OLED_Write_Data(uint8_t dat);
+void OLED_DrawPixel(uint8_t x,uint8_t y,uint8_t color);
 void OLED_display(void);
-void _swap_char(unsigned char* a,unsigned char* b);
-void OLED_DrawLine(unsigned char x1,unsigned char y1,unsigned char x2,unsigned char y2,unsigned char color);
+void _swap_char(uint8_t* a,uint8_t* b);
+void OLED_DrawLine(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2,uint8_t color);
 void OLED_display_clear(void);
-void OLED_Draw_Byte(unsigned char *pBuf, unsigned char mask, unsigned char offset, __BIT reserve_hl);
-void OLED_DrawChar(u8 x, u8 y, u8 chr);
-void OLED_DrawNum(unsigned char digit, unsigned char len);
-void OLED_Set_Posi(unsigned char x, unsigned char y);
-void OLED_DrawBMP_2(u8 x0, u8 y0, u8 x1, u8 y1, const u8 *BMP);
+void OLED_Draw_Byte(uint8_t *pBuf, uint8_t mask, uint8_t offset, __BIT reserve_hl);
+void OLED_DrawChar(uint8_t x, uint8_t y, uint8_t chr);
+void OLED_DrawNum(uint8_t digit, uint8_t len);
+void OLED_Set_Posi(uint8_t x, uint8_t y);
+void OLED_DrawBMP_2(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, const uint8_t *BMP);
 
 #endif  
 	 

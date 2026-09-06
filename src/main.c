@@ -8,6 +8,7 @@
 #include "voltage.h"
 #include "EEPROM.h"
 #include <math.h>
+#include <stdint.h>
 
 void prekey(void);//Calculate key press duration
 void relkey_page0(void);//Handle key input
@@ -18,22 +19,22 @@ void mode0(void);//Mode 0
 void mode1(void);//Mode 1
 void pid_p(void);
 
-unsigned int presstime=500;//Long-press duration in ms
-unsigned int tartem=300;//Target temperature
-unsigned int keyi0=0;//Key 0 press duration
-unsigned int keyi1=0;//Key 1 press duration
-unsigned int keyi=0;//Both-key press duration
-unsigned int maxtartem=350;//Configurable maximum target temperature
-unsigned int mintartem=1;//Configurable minimum target temperature
-unsigned int i;//Loop variable
-unsigned int time;//Timer counter
-unsigned int kp=10,ki=20,kd=30;
+uint16_t presstime=500;//Long-press duration in ms
+uint16_t tartem=300;//Target temperature
+uint16_t keyi0=0;//Key 0 press duration
+uint16_t keyi1=0;//Key 1 press duration
+uint16_t keyi=0;//Both-key press duration
+uint16_t maxtartem=350;//Configurable maximum target temperature
+uint16_t mintartem=1;//Configurable minimum target temperature
+uint16_t i;//Loop variable
+uint16_t time;//Timer counter
+uint16_t kp=10,ki=20,kd=30;
 
-int pwm=0;
-int pagenum=0;
-int err=0,lasterr=0;
-int integral=0;
-int derivative=0;
+int16_t pwm=0;
+int16_t pagenum=0;
+int16_t err=0,lasterr=0;
+int16_t integral=0;
+int16_t derivative=0;
 
 float showpwm=0;
 float showpwm_opp=0;
@@ -43,22 +44,22 @@ float realtem=0;//Actual temperature
 float realtem_average[30]={0};//Actual temperature samples
 float vcc=0;
 
-unsigned char count=0;//Supply voltage sample index
-unsigned char page = 0;//Page selection
-unsigned char modesel=0;//Mode selection
-unsigned char keyx0,keyx1;
-unsigned char page1_iconnum=4;//Page 1 option count
-unsigned char page1_PIDnum=4;//PID submenu option count
-unsigned char page1_TEMnum=3;//Temperature submenu option count
-unsigned char page1_MODEnum=3;//Mode submenu option count
-unsigned char eeptart[2]={0};
-unsigned char eepkp[2]={0};
-unsigned char eepki[2]={0};
-unsigned char eepkd[2]={0};
-unsigned char eepmaxt[2]={0};
-unsigned char eepmint[2]={0};
-unsigned char mapline[101]={0};//Temperature history
-unsigned char numofsam=30;//Sample count
+uint8_t count=0;//Supply voltage sample index
+uint8_t page = 0;//Page selection
+uint8_t modesel=0;//Mode selection
+uint8_t keyx0,keyx1;
+uint8_t page1_iconnum=4;//Page 1 option count
+uint8_t page1_PIDnum=4;//PID submenu option count
+uint8_t page1_TEMnum=3;//Temperature submenu option count
+uint8_t page1_MODEnum=3;//Mode submenu option count
+uint8_t eeptart[2]={0};
+uint8_t eepkp[2]={0};
+uint8_t eepki[2]={0};
+uint8_t eepkd[2]={0};
+uint8_t eepmaxt[2]={0};
+uint8_t eepmint[2]={0};
+uint8_t mapline[101]={0};//Temperature history
+uint8_t numofsam=30;//Sample count
 
 __BIT swclose=1;//Key sleep switch
 __BIT keyj0;//Key 0 flag

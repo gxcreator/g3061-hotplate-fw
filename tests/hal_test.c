@@ -45,11 +45,11 @@ static void mock_nop(void);
 #include "../src/soft_i2c.c"
 
 static uint8_t eeprom[0x800];
-static unsigned adc_pending, adc_channel, adc_code, adc_completions;
-static unsigned adc_delay_calls, adc_nops;
-static unsigned iap_active, iap_command, iap_address, iap_count, iap_nops;
+static uint32_t adc_pending, adc_channel, adc_code, adc_completions;
+static uint32_t adc_delay_calls, adc_nops;
+static uint32_t iap_active, iap_command, iap_address, iap_count, iap_nops;
 static uint8_t initial_ea;
-static unsigned i2c_capture, i2c_nops;
+static uint32_t i2c_capture, i2c_nops;
 static struct { uint8_t scl, sda; } i2c_states[16];
 
 void SYS_DelayUs(uint16_t t)
@@ -82,8 +82,8 @@ static void mock_nop(void)
         ++i2c_nops;
     }
     if (iap_active) {
-        unsigned address = ((unsigned)IAP_ADDRH << 8) | IAP_ADDRL;
-        unsigned index = iap_nops / 2;
+        uint32_t address = ((uint32_t)IAP_ADDRH << 8) | IAP_ADDRL;
+        uint32_t index = iap_nops / 2;
         assert(EA == 0);
         assert(F0 == initial_ea);
         assert(IAP_CONTR == 0x80);
@@ -108,7 +108,7 @@ static void mock_nop(void)
 
 static void test_adc(void)
 {
-    unsigned saved, channel, code;
+    uint32_t saved, channel, code;
     assert(!i2c_capture);
     for (saved = 0; saved < 256; ++saved) {
         P_SW2 = (uint8_t)saved;
@@ -159,7 +159,7 @@ static void test_adc(void)
     adc_pending = 0;
 }
 
-static void begin_iap(unsigned command, unsigned address, unsigned count,
+static void begin_iap(uint32_t command, uint32_t address, uint32_t count,
                       uint8_t ea)
 {
     assert(count > 0);
@@ -194,12 +194,12 @@ static void test_eeprom(void)
         {0x07FF, 1}
     };
     uint8_t expected[sizeof eeprom], input[260], output[262];
-    unsigned ea, c, i, pass, sector;
+    uint32_t ea, c, i, pass, sector;
     for (ea = 0; ea < 2; ++ea) {
         memset(eeprom, 0xFF, sizeof eeprom);
         memset(expected, 0xFF, sizeof expected);
         for (c = 0; c < sizeof cases / sizeof cases[0]; ++c) {
-            unsigned address = cases[c].address, count = cases[c].count;
+            uint32_t address = cases[c].address, count = cases[c].count;
             /* Second pass exercises programming without erasing (1->0 only). */
             for (pass = 0; pass < 2; ++pass) {
                 for (i = 0; i < count; ++i) {
@@ -224,7 +224,7 @@ static void test_eeprom(void)
         }
         for (sector = 0; sector < sizeof eeprom; sector += 512) {
             for (pass = 0; pass < 2; ++pass) {
-                unsigned address = sector + (pass ? 511 : 0);
+                uint32_t address = sector + (pass ? 511 : 0);
                 for (i = 0; i < sizeof eeprom; ++i)
                     expected[i] = eeprom[i] = (uint8_t)(i * 13 + i / 256);
                 memset(expected + sector, 0xFF, 512);
@@ -239,7 +239,7 @@ static void test_eeprom(void)
 
 static void test_timers(void)
 {
-    unsigned mode, aux, bit;
+    uint32_t mode, aux, bit;
     for (mode = 0; mode < 256; ++mode) {
         for (aux = 0; aux < 256; ++aux) {
             for (bit = 0; bit < 2; ++bit) {
@@ -271,7 +271,7 @@ static void test_timers(void)
 
 static void test_soft_i2c(void)
 {
-    unsigned m0, m1, value, bit, pins;
+    uint32_t m0, m1, value, bit, pins;
     assert(!adc_pending && !iap_active);
     i2c_capture = 1;
     i2c_nops = 0;
@@ -327,7 +327,7 @@ static void test_soft_i2c(void)
         i2c_write_byte((uint8_t)value);
         assert(i2c_nops == 16);
         for (bit = 0; bit < 8; ++bit) {
-            unsigned expected = (value >> (7 - bit)) & 1;
+            uint32_t expected = (value >> (7 - bit)) & 1;
             assert(i2c_states[2 * bit].scl == 0);
             assert(i2c_states[2 * bit + 1].scl == 1);
             assert(i2c_states[2 * bit].sda == expected);

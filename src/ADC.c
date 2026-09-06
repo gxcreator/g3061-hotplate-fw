@@ -25,7 +25,7 @@ void adc_init(void)
 	Parameter: ADC channel 0-15; channel 15 is the internal reference.
 	Returns: 12-bit ADC value, or 0xffff for an invalid channel.
 */
-unsigned int get_adc(unsigned int p)
+uint16_t get_adc(uint16_t p)
 {
 	if(p <= 15)
 	{
