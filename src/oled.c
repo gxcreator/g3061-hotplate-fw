@@ -22,101 +22,70 @@ void delay_ms(uint16_t ms) {
     }
 }
 
+/* Co=0: all payload bytes until STOP share the command/data selection. */
+static void oled_begin(uint8_t control) {
+    i2c_start();
+    i2c_write_byte(0x78);
+    i2c_clock_ack();
+    i2c_write_byte(control);
+    i2c_clock_ack();
+}
+
+static void oled_command(uint8_t command) {
+    oled_begin(0x00);
+    i2c_write_byte(command);
+    i2c_clock_ack();
+    i2c_stop();
+}
+
 // Display inversion
 void OLED_ColorTurn(uint8_t i) {
     if (i == 0) {
-        OLED_WR_Byte(0xA6, OLED_CMD); // Normal display
+        oled_command(0xA6); // Normal display
     }
     if (i == 1) {
-        OLED_WR_Byte(0xA7, OLED_CMD); // Inverse display
+        oled_command(0xA7); // Inverse display
     }
 }
 
 // Rotate display 180 degrees
 void OLED_DisplayTurn(uint8_t i) {
     if (i == 0) {
-        OLED_WR_Byte(0xC8, OLED_CMD); // Normal display
-        OLED_WR_Byte(0xA1, OLED_CMD);
+        oled_command(0xC8); // Normal display
+        oled_command(0xA1);
     }
     if (i == 1) {
-        OLED_WR_Byte(0xC0, OLED_CMD); // Rotated display
-        OLED_WR_Byte(0xA0, OLED_CMD);
+        oled_command(0xC0); // Rotated display
+        oled_command(0xA0);
     }
 }
 
-/* Co=0: all payload bytes until STOP share the command/data selection. */
-static void oled_begin(uint8_t mode) {
-    i2c_start();
-    i2c_write_byte(0x78);
-    i2c_clock_ack();
-    if (mode) {
-        i2c_write_byte(0x40);
-    } else {
-        i2c_write_byte(0x00);
-    }
-    i2c_clock_ack();
-}
-
-// Write one byte to the SSD1306; retained for initialization and direct commands.
-void OLED_WR_Byte(uint8_t dat, uint8_t mode) {
-    oled_begin(mode);
-    i2c_write_byte(dat);
-    i2c_clock_ack();
-    i2c_stop();
-}
-
-// Raw controller column and page, not buffered pixel coordinates.
-void OLED_Set_Pos(uint8_t x, uint8_t page) {
-    if (x >= OLED_WIDTH || page >= OLED_PAGES)
-        return;
-    oled_begin(OLED_CMD);
-    i2c_write_byte(0xb0 | page);
-    i2c_clock_ack();
-    i2c_write_byte(x & 0x0f);
-    i2c_clock_ack();
-    i2c_write_byte((x >> 4) | 0x10);
-    i2c_clock_ack();
-    i2c_stop();
-}
 // Enable OLED display
 void OLED_Display_On(void) {
-    OLED_WR_Byte(0X8D, OLED_CMD); // SET DCDC command
-    OLED_WR_Byte(0X14, OLED_CMD); // DCDC ON
-    OLED_WR_Byte(0XAF, OLED_CMD); // DISPLAY ON
+    oled_command(0X8D); // SET DCDC command
+    oled_command(0X14); // DCDC ON
+    oled_command(0XAF); // DISPLAY ON
 }
 #ifdef OLED_ENABLE_LEGACY_API
 // Disable OLED display
 void OLED_Display_Off(void) {
-    OLED_WR_Byte(0X8D, OLED_CMD); // SET DCDC command
-    OLED_WR_Byte(0X10, OLED_CMD); // DCDC OFF
-    OLED_WR_Byte(0XAE, OLED_CMD); // DISPLAY OFF
+    oled_command(0X8D); // SET DCDC command
+    oled_command(0X10); // DCDC OFF
+    oled_command(0XAE); // DISPLAY OFF
 }
 #endif
-// Clear the display to black.
-void OLED_Clear(void) {
-    uint8_t i, n;
-    for (i = 0; i < OLED_PAGES; i++) {
-        OLED_Set_Pos(0, i);
-        oled_begin(OLED_DATA);
-        for (n = 0; n < OLED_WIDTH; n++) {
-            i2c_write_byte(0);
-            i2c_clock_ack();
-        }
-        i2c_stop();
-    } // Update display
-}
 
-// Direct character output: x is a column, y is a controller page.
+// Buffered character output in native pixel coordinates.
 void OLED_ShowChar(uint8_t x, uint8_t y, uint8_t chr, uint8_t sizey) {
     uint8_t c = chr - ' ';
     if (sizey == 8) {
         if (c >= sizeof asc2_0806 / sizeof asc2_0806[0])
             c = 0;
-        OLED_DrawBMP(x, y, 6, 8, asc2_0806[c]);
+        OLED_DrawBMP_2(x, y, 6, 8, asc2_0806[c]);
     } else if (sizey == 16) {
         if (c >= sizeof asc2_1608 / sizeof asc2_1608[0])
             c = 0;
-        OLED_DrawBMP(x, y, 8, 16, asc2_1608[c]);
+        OLED_DrawBMP_2(x, y, 8, 16, asc2_1608[c]);
     }
 }
 #ifdef OLED_ENABLE_LEGACY_API
@@ -135,7 +104,7 @@ uint16_t oled_pow(uint8_t m, uint8_t n) {
 void OLED_ShowNum(uint8_t x, uint8_t y, uint16_t num, uint8_t len, uint8_t sizey) {
     uint8_t t, temp, m = 0;
     uint8_t enshow = 0;
-    if ((sizey != 8 && sizey != 16) || len > 5 || x >= OLED_WIDTH || y >= OLED_PAGES)
+    if ((sizey != 8 && sizey != 16) || len > 5 || x >= OLED_WIDTH || y >= OLED_HEIGHT)
         return;
     if (sizey == 8)
         m = 2;
@@ -156,7 +125,7 @@ void OLED_ShowNum(uint8_t x, uint8_t y, uint16_t num, uint8_t len, uint8_t sizey
 
 // Display a string
 void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey) {
-    if ((sizey != 8 && sizey != 16) || y >= OLED_PAGES)
+    if ((sizey != 8 && sizey != 16) || y >= OLED_HEIGHT)
         return;
     while (x < OLED_WIDTH && *chr) {
         OLED_ShowChar(x, y, *chr++, sizey);
@@ -166,44 +135,7 @@ void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey) {
             x += sizey / 2;
     }
 }
-// Display Chinese characters
-// void OLED_ShowChinese(uint8_t x,uint8_t y,uint8_t no,uint8_t sizey)
-//{
-//	uint16_t i,size1=(sizey/8+((sizey%8)?1:0))*sizey;
-//	for(i=0;i<size1;i++)
-//	{
-//		if(i%sizey==0) OLED_Set_Pos(x,y++);
-//		if(sizey==16) OLED_WR_Byte(Hzk[no][i],OLED_DATA);//16x16 font
-////		else if(sizey==xx) OLED_WR_Byte(xxx[c][i],OLED_DATA);//User-defined font
-//		else return;
-//	}
-//}
 #endif
-
-// Display an image
-// x: column; y: controller page. This bypasses the framebuffer.
-// sizex,sizey: image dimensions
-// BMP: image to display
-void OLED_DrawBMP(int16_t x, int16_t y, uint8_t sizex, uint8_t sizey, const uint8_t BMP[]) {
-    uint8_t i, m, columns, pages;
-    if (x < 0 || y < 0 || x >= OLED_WIDTH || y >= OLED_PAGES || !sizex || !sizey)
-        return;
-    columns = sizex;
-    if (columns > OLED_WIDTH - x)
-        columns = OLED_WIDTH - x;
-    pages = sizey / 8 + (sizey % 8 != 0);
-    if (pages > OLED_PAGES - y)
-        pages = OLED_PAGES - y;
-    for (i = 0; i < pages; i++) {
-        OLED_Set_Pos(x, i + y);
-        oled_begin(OLED_DATA);
-        for (m = 0; m < columns; m++) {
-            i2c_write_byte(BMP[(uint16_t)i * sizex + m]);
-            i2c_clock_ack();
-        }
-        i2c_stop();
-    }
-}
 
 // Initialize
 void OLED_Init(void) {
@@ -214,39 +146,37 @@ void OLED_Init(void) {
     delay_ms(200);
     OLED_RES_Set();
     delay_ms(200);
-    OLED_WR_Byte(0xAE, OLED_CMD); //--turn off oled panel
-    OLED_WR_Byte(0x00, OLED_CMD); //---set low column address
-    OLED_WR_Byte(0x10, OLED_CMD); //---set high column address
-    OLED_WR_Byte(
-        0x40, OLED_CMD); //--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
-    OLED_WR_Byte(0x81, OLED_CMD); //--set contrast control register
-    OLED_WR_Byte(0xff, OLED_CMD); // Set SEG Output Current Brightness
-    OLED_WR_Byte(0xA1,
-                 OLED_CMD); //--Set SEG/Column Mapping     0xa0 mirrored horizontally, 0xa1 normal
-    OLED_WR_Byte(0xC8,
-                 OLED_CMD); // Set COM/Row Scan Direction   0xc0 mirrored vertically, 0xc8 normal
-    OLED_WR_Byte(0xA6, OLED_CMD); //--set normal display
-    OLED_WR_Byte(0xA8, OLED_CMD); // SSD1306 multiplex ratio = argument + 1
-    OLED_WR_Byte(0x1f, OLED_CMD); // 1/32 duty for the physical 128x32 panel
-    OLED_WR_Byte(0xD3, OLED_CMD); //-set display offset	Shift Mapping RAM Counter (0x00~0x3F)
-    OLED_WR_Byte(0x00, OLED_CMD); //-not offset
-    OLED_WR_Byte(0xd5, OLED_CMD); //--set display clock divide ratio/oscillator frequency
-    OLED_WR_Byte(0x80, OLED_CMD); //--set divide ratio, Set Clock as 100 Frames/Sec
-    OLED_WR_Byte(0xD9, OLED_CMD); //--set pre-charge period
-    OLED_WR_Byte(0xF1, OLED_CMD); // Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
-    OLED_WR_Byte(0xDA, OLED_CMD); //--set com pins hardware configuration
-    OLED_WR_Byte(0x02, OLED_CMD); // Sequential COM pins, no left/right remap
-    OLED_WR_Byte(0xDB, OLED_CMD); //--set vcomh
-    OLED_WR_Byte(0x40, OLED_CMD); // Set VCOM Deselect Level
-    OLED_WR_Byte(0x20, OLED_CMD); //-Set Page Addressing Mode (0x00/0x01/0x02)
-    OLED_WR_Byte(0x02, OLED_CMD); //
-    OLED_WR_Byte(0x8D, OLED_CMD); //--set Charge Pump enable/disable
-    OLED_WR_Byte(0x14, OLED_CMD); //--set(0x10) disable
-    OLED_WR_Byte(0xA4, OLED_CMD); // Disable Entire Display On (0xa4/0xa5)
-    OLED_WR_Byte(0xA6, OLED_CMD); // Disable Inverse Display On (0xa6/a7)
-    OLED_Clear();
-    OLED_WR_Byte(0xAF, OLED_CMD); /*display ON*/
-    OLED_Clear();
+    oled_command(0xAE); //--turn off oled panel
+    oled_command(0x00); //---set low column address
+    oled_command(0x10); //---set high column address
+    oled_command(0x40); //--set start line address (0x00~0x3F)
+    oled_command(0x81); //--set contrast control register
+    oled_command(0xff); // Set SEG Output Current Brightness
+    oled_command(0xA1); // Set SEG/Column Mapping: 0xa0 mirrored, 0xa1 normal
+    oled_command(0xC8); // Set COM/Row Scan Direction: 0xc0 mirrored, 0xc8 normal
+    oled_command(0xA6); //--set normal display
+    oled_command(0xA8); // SSD1306 multiplex ratio = argument + 1
+    oled_command(0x1f); // 1/32 duty for the physical 128x32 panel
+    oled_command(0xD3); // Set display offset (0x00~0x3F)
+    oled_command(0x00); //-not offset
+    oled_command(0xd5); //--set display clock divide ratio/oscillator frequency
+    oled_command(0x80); //--set divide ratio, Set Clock as 100 Frames/Sec
+    oled_command(0xD9); //--set pre-charge period
+    oled_command(0xF1); // Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+    oled_command(0xDA); //--set com pins hardware configuration
+    oled_command(0x02); // Sequential COM pins, no left/right remap
+    oled_command(0xDB); //--set vcomh
+    oled_command(0x40); // Set VCOM Deselect Level
+    oled_command(0x20); //-Set Page Addressing Mode (0x00/0x01/0x02)
+    oled_command(0x02);
+    oled_command(0x8D); //--set Charge Pump enable/disable
+    oled_command(0x14); //--set(0x10) disable
+    oled_command(0xA4); // Disable Entire Display On (0xa4/0xa5)
+    oled_command(0xA6); // Disable Inverse Display On (0xa6/a7)
+    /* Synchronize the cleared framebuffer and controller RAM before display-on. */
+    OLED_display_clear();
+    OLED_display();
+    oled_command(0xAF); /*display ON*/
     OLED_ColorTurn(0);
     OLED_DisplayTurn(0);
     OLED_Display_On();
@@ -334,7 +264,25 @@ void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color
 }
 
 void OLED_display(void) {
-    OLED_DrawBMP(0, 0, OLED_WIDTH, OLED_HEIGHT, oled_buffer);
+    uint8_t page, column;
+    const __xdata uint8_t *data = oled_buffer;
+    for (page = 0; page < OLED_PAGES; ++page) {
+        oled_begin(0x00);
+        i2c_write_byte(0xb0 | page);
+        i2c_clock_ack();
+        i2c_write_byte(0x00);
+        i2c_clock_ack();
+        i2c_write_byte(0x10);
+        i2c_clock_ack();
+        i2c_stop();
+
+        oled_begin(0x40);
+        for (column = 0; column < OLED_WIDTH; ++column) {
+            i2c_write_byte(*data++);
+            i2c_clock_ack();
+        }
+        i2c_stop();
+    }
 }
 
 void OLED_display_clear(void) {
