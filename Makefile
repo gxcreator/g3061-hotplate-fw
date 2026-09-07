@@ -39,7 +39,8 @@ CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc \
            -I$(HAL_DIR)/include $(HAL_FLAGS)
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
-SRCS := main.c ADC.c temperature.c oled.c soft_i2c.c EEPROM.c timer0.c
+APP_SRCS := settings.c measurements.c pid.c buttons.c realtime.c ui.c
+SRCS := main.c $(APP_SRCS) ADC.c temperature.c oled.c soft_i2c.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
 RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/fw_sys.rel $(BUILD)/fw_adc.rel $(BUILD)/crtxinit.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(HAL_DIR)/include/*.h)
@@ -76,14 +77,14 @@ $(BUILD):
 	mkdir -p $(BUILD)
 
 $(BUILD)/%.rel: $(SRC_DIR)/%.c $(HDRS) Makefile | $(BUILD)
-	$(SDCC) $(CFLAGS) -c $< -o $@
+	$(SDCC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/fw_sys.rel: $(HAL_DIR)/src/fw_sys.c $(HDRS) Makefile | $(BUILD)
 	# Upstream ticks_ms/ticks_us use read-only __code without const (SDCC 356).
-	$(SDCC) $(CFLAGS) --disable-warning 356 -c $< -o $@
+	$(SDCC) $(CPPFLAGS) $(CFLAGS) --disable-warning 356 -c $< -o $@
 
 $(BUILD)/fw_adc.rel: $(HAL_DIR)/src/fw_adc.c $(HDRS) Makefile | $(BUILD)
-	$(SDCC) $(CFLAGS) -c $< -o $@
+	$(SDCC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.rel: $(SRC_DIR)/%.asm Makefile | $(BUILD)
 	$(SDAS8051) -plosgff $@ $<
@@ -94,8 +95,28 @@ $(BUILD)/$(TARGET).ihx: $(RELS)
 $(BUILD)/$(TARGET).hex: $(BUILD)/$(TARGET).ihx
 	$(PACKIHX) $< > $@
 
-test: $(BUILD)/hal_test
+HOST_FLAGS := -std=c11 -O2 -Wall -Wextra -Werror -Wno-parentheses
+APP_TEST_DEPS := tests/application_test.c $(APP_SRCS:%=$(SRC_DIR)/%) $(SRC_DIR)/main.c $(SRC_DIR)/temperature.c $(HDRS) Makefile
+OLED_TEST_DEPS := tests/oled_test.c $(SRC_DIR)/oled.c $(HDRS) Makefile
+
+test: $(BUILD)/hal_test $(BUILD)/application_test $(BUILD)/oled_test
 	"$(BUILD)/hal_test"
+	"$(BUILD)/application_test"
+	"$(BUILD)/oled_test"
+
+$(BUILD)/oled_test: $(OLED_TEST_DEPS) | $(BUILD)
+	$(HOST_CC) $(HOST_FLAGS) $< -lm -o $@
+
+$(BUILD)/application_test: $(APP_TEST_DEPS) | $(BUILD)
+	$(HOST_CC) $(HOST_FLAGS) -I$(HAL_DIR)/include $< -lm -o $@
+
+test-sanitize: $(APP_TEST_DEPS) $(OLED_TEST_DEPS) tests/hal_test.c | $(BUILD)
+	$(HOST_CC) $(HOST_FLAGS) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -I$(HAL_DIR)/include tests/application_test.c -lm -o $(BUILD)/application_test_sanitize
+	"$(BUILD)/application_test_sanitize"
+	$(HOST_CC) $(HOST_FLAGS) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -I$(HAL_DIR)/include tests/hal_test.c -o $(BUILD)/hal_test_sanitize
+	"$(BUILD)/hal_test_sanitize"
+	$(HOST_CC) $(HOST_FLAGS) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer tests/oled_test.c -lm -o $(BUILD)/oled_test_sanitize
+	"$(BUILD)/oled_test_sanitize"
 
 $(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(HAL_DIR)/src/fw_adc.c $(SRC_DIR)/EEPROM.c $(SRC_DIR)/timer0.c $(SRC_DIR)/soft_i2c.c $(HDRS) Makefile | $(BUILD)
 	$(HOST_CC) -std=c11 -O2 -Wall -Wextra -Werror -Wno-parentheses \
@@ -104,7 +125,10 @@ $(BUILD)/hal_test: tests/hal_test.c $(SRC_DIR)/ADC.c $(HAL_DIR)/src/fw_adc.c $(S
 format:
 	$(CLANG_FORMAT) --style=file -i $(FORMAT_FILES)
 
+format-check:
+	$(CLANG_FORMAT) --style=file --dry-run --Werror $(FORMAT_FILES)
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test format
+.PHONY: all clean test test-sanitize format format-check

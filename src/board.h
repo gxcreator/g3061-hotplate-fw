@@ -6,8 +6,8 @@
 
 /* Active-high heater and active-low buttons. */
 #define heat P34
-#define key0 P32
-#define key1 P33
+#define key0 P32 /* LEFT */
+#define key1 P33 /* RIGHT */
 #define HEATER_PIN GPIO_Pin_4
 #define BUTTON_PINS (GPIO_Pin_2 | GPIO_Pin_3)
 
