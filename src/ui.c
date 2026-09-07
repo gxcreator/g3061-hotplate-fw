@@ -307,9 +307,8 @@ void ui_render(uint8_t graph_tick) {
 }
 
 void ui_fault(void) {
-    uint8_t n;
     OLED_display_clear();
-    for (n = 0; n < sizeof "SENSOR FAULT" - 1; ++n)
-        OLED_ShowChar(16 + 8 * n, 8, "SENSOR FAULT"[n], 16);
+    OLED_DrawStringSmall((OLED_WIDTH - 6 * (sizeof "SENSOR FAULT" - 1)) / 2, (OLED_HEIGHT - 8) / 2,
+                         "SENSOR FAULT");
     OLED_display();
 }

@@ -82,10 +82,12 @@ void OLED_ShowChar(uint8_t x, uint8_t y, uint8_t chr, uint8_t sizey) {
         if (c >= sizeof asc2_0806 / sizeof asc2_0806[0])
             c = 0;
         OLED_DrawBMP_2(x, y, 6, 8, asc2_0806[c]);
+#if defined(OLED_ENABLE_FONT_8X16) || defined(OLED_ENABLE_LEGACY_API)
     } else if (sizey == 16) {
         if (c >= sizeof asc2_1608 / sizeof asc2_1608[0])
             c = 0;
         OLED_DrawBMP_2(x, y, 8, 16, asc2_1608[c]);
+#endif
     }
 }
 #ifdef OLED_ENABLE_LEGACY_API

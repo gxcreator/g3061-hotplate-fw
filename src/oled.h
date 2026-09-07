@@ -30,7 +30,8 @@ void OLED_display(void);
 void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color);
 void OLED_display_clear(void);
 /* Native 6x8 (sizey=8) or 8x16 (sizey=16) glyph, clipped at right/bottom.
- * Unsupported font indices draw a space; other sizes do nothing. */
+ * 8x16 requires OLED_ENABLE_FONT_8X16 or OLED_ENABLE_LEGACY_API.
+ * Unsupported font indices draw a space; unavailable/other sizes do nothing. */
 void OLED_ShowChar(uint8_t x, uint8_t y, uint8_t chr, uint8_t sizey);
 /* Native 6x8 text from code memory, with bottom clipping.
  * Stops before a partial glyph at the right edge; unsupported font indices draw a space. */
