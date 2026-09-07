@@ -10,20 +10,20 @@
 #endif
 
 /* Highest code a 12-bit ADC can return. */
-#define ADC_MAX_COUNT           4095u
+#define ADC_MAX_COUNT 4095u
 
 /* The bandgap reads ADC_REFERENCE_MILLIVOLTS * 4096 / Vcc, so its count falls
  * as the rail rises. This window spans a 2.57 V to 6.09 V rail; outside it the
  * reference is broken rather than the supply unusual. It also bounds
  * vcc_tenth_mv, which keeps the voltage product inside uint32_t. */
-#define REFERENCE_MIN_COUNT     800u
-#define REFERENCE_MAX_COUNT     1900u
+#define REFERENCE_MIN_COUNT 800u
+#define REFERENCE_MAX_COUNT 1900u
 
 /* Vcc in 0.1 mV units is this over the bandgap count. Value: 48742400. */
-#define REFERENCE_NUMERATOR     (ADC_REFERENCE_MILLIVOLTS * 4096UL * 10UL)
+#define REFERENCE_NUMERATOR (ADC_REFERENCE_MILLIVOLTS * 4096UL * 10UL)
 
 /* Four digits on the display. */
-#define VOLTAGE_MAX_CENTIVOLTS  9990u
+#define VOLTAGE_MAX_CENTIVOLTS 9990u
 
 /* Each accumulator holds MEASUREMENT_SAMPLE_COUNT times its running mean.
  * Peaks: temperature 30*360, reference 30*1900, supply 30*4095. */
@@ -57,16 +57,16 @@ uint8_t measurements_sample(void) {
     raw_temperature = get_adc(tem_channel);
 
     /* The shutdown test uses the raw reading. */
-    if (reference < REFERENCE_MIN_COUNT || reference > REFERENCE_MAX_COUNT
-        || supply > ADC_MAX_COUNT) {
+    if (reference < REFERENCE_MIN_COUNT || reference > REFERENCE_MAX_COUNT ||
+        supply > ADC_MAX_COUNT) {
         realtime_fault();
         return 0;
     }
 
     /* Prime from the first good reading instead of ramping up from zero. */
     if (!primed) {
-        temperature_sum = (uint32_t)temperature_from_adc(raw_temperature)
-                        * MEASUREMENT_SAMPLE_COUNT;
+        temperature_sum =
+            (uint32_t)temperature_from_adc(raw_temperature) * MEASUREMENT_SAMPLE_COUNT;
         reference_sum = (uint32_t)reference * MEASUREMENT_SAMPLE_COUNT;
         supply_sum = (uint32_t)supply * MEASUREMENT_SAMPLE_COUNT;
         primed = 1;
@@ -87,12 +87,10 @@ uint8_t measurements_sample(void) {
      * reading by it. Taking the means first keeps the product at
      * 60928 * 4095 = 249500160, inside uint32_t without splitting. */
     vcc_tenth_mv = (REFERENCE_NUMERATOR + reference_mean / 2) / reference_mean;
-    centivolts = (vcc_tenth_mv * supply_mean + SUPPLY_VOLTAGE_DIVISOR / 2)
-               / SUPPLY_VOLTAGE_DIVISOR;
+    centivolts = (vcc_tenth_mv * supply_mean + SUPPLY_VOLTAGE_DIVISOR / 2) / SUPPLY_VOLTAGE_DIVISOR;
 
-    voltage_centivolts = centivolts > VOLTAGE_MAX_CENTIVOLTS
-                       ? VOLTAGE_MAX_CENTIVOLTS
-                       : (uint16_t)centivolts;
+    voltage_centivolts =
+        centivolts > VOLTAGE_MAX_CENTIVOLTS ? VOLTAGE_MAX_CENTIVOLTS : (uint16_t)centivolts;
 
     realtime_sample();
     return 1;

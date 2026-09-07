@@ -22,34 +22,34 @@
  * The last node is one code past the valid range. It exists only so the
  * top interval is a full 128 wide; it is never used as a base index.
  */
- 
-#define ADC_FIRST_NODE  682u    /* first sampled code, 0 C */
-#define ADC_LAST_VALID  1449u   /* last code that still leaves a node above it */
-#define NODE_SPACING    128u    /* ADC codes between table entries */
- 
+
+#define ADC_FIRST_NODE 682u  /* first sampled code, 0 C */
+#define ADC_LAST_VALID 1449u /* last code that still leaves a node above it */
+#define NODE_SPACING 128u    /* ADC codes between table entries */
+
 static const __code uint16_t temperature_degrees[7] = {
     0, 60, 126, 200, 282, 375, 479,
 };
- 
+
 uint16_t temperature_from_adc(uint16_t adc) {
     uint16_t offset, index, fraction, delta, temp;
- 
+
     /* Reject out of range. An open sensor reads near 4095, a shorted one 0. */
     if (adc < ADC_FIRST_NODE || adc > ADC_LAST_VALID) {
         return TEMPERATURE_INVALID;
     }
- 
+
     /* Locate the reading: which interval, and how far into it. */
-    offset = adc - ADC_FIRST_NODE;          /* 0..767  */
-    index = offset / NODE_SPACING;          /* 0..5    */
-    fraction = offset % NODE_SPACING;       /* 0..127  */
- 
+    offset = adc - ADC_FIRST_NODE;    /* 0..767  */
+    index = offset / NODE_SPACING;    /* 0..5    */
+    fraction = offset % NODE_SPACING; /* 0..127  */
+
     /* Straight-line interpolation between the two nodes.
      * Adding half the divisor rounds to nearest instead of down.
      * Largest delta is 104, so the numerator stays under 13272. */
     temp = temperature_degrees[index];
     delta = temperature_degrees[index + 1u] - temp;
     temp += (delta * fraction + NODE_SPACING / 2u) / NODE_SPACING;
- 
+
     return temp;
 }

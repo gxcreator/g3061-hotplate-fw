@@ -44,10 +44,8 @@ void OLED_DisplayTurn(uint8_t i) {
     }
 }
 
-// Send one byte
-// Write one byte to the SSD1306.
-// mode: data/command flag; 0 selects command, 1 selects data.
-void OLED_WR_Byte(uint8_t dat, uint8_t mode) {
+/* Co=0: all payload bytes until STOP share the command/data selection. */
+static void oled_begin(uint8_t mode) {
     i2c_start();
     i2c_write_byte(0x78);
     i2c_clock_ack();
@@ -57,6 +55,11 @@ void OLED_WR_Byte(uint8_t dat, uint8_t mode) {
         i2c_write_byte(0x00);
     }
     i2c_clock_ack();
+}
+
+// Write one byte to the SSD1306; retained for initialization and direct commands.
+void OLED_WR_Byte(uint8_t dat, uint8_t mode) {
+    oled_begin(mode);
     i2c_write_byte(dat);
     i2c_clock_ack();
     i2c_stop();
@@ -66,9 +69,14 @@ void OLED_WR_Byte(uint8_t dat, uint8_t mode) {
 void OLED_Set_Pos(uint8_t x, uint8_t page) {
     if (x >= OLED_WIDTH || page >= OLED_PAGES)
         return;
-    OLED_WR_Byte(0xb0 + page, OLED_CMD);
-    OLED_WR_Byte(((x & 0xf0) >> 4) | 0x10, OLED_CMD);
-    OLED_WR_Byte((x & 0x0f), OLED_CMD);
+    oled_begin(OLED_CMD);
+    i2c_write_byte(0xb0 | page);
+    i2c_clock_ack();
+    i2c_write_byte(x & 0x0f);
+    i2c_clock_ack();
+    i2c_write_byte((x >> 4) | 0x10);
+    i2c_clock_ack();
+    i2c_stop();
 }
 // Enable OLED display
 void OLED_Display_On(void) {
@@ -88,11 +96,13 @@ void OLED_Display_Off(void) {
 void OLED_Clear(void) {
     uint8_t i, n;
     for (i = 0; i < OLED_PAGES; i++) {
-        OLED_WR_Byte(0xb0 + i, OLED_CMD); // Set page address (0-3)
-        OLED_WR_Byte(0x00, OLED_CMD);     // Set display position: low column address
-        OLED_WR_Byte(0x10, OLED_CMD);     // Set display position: high column address
-        for (n = 0; n < OLED_WIDTH; n++)
-            OLED_WR_Byte(0, OLED_DATA);
+        OLED_Set_Pos(0, i);
+        oled_begin(OLED_DATA);
+        for (n = 0; n < OLED_WIDTH; n++) {
+            i2c_write_byte(0);
+            i2c_clock_ack();
+        }
+        i2c_stop();
     } // Update display
 }
 
@@ -176,7 +186,7 @@ void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey) {
 // BMP: image to display
 void OLED_DrawBMP(int16_t x, int16_t y, uint8_t sizex, uint8_t sizey, const uint8_t BMP[]) {
     uint8_t i, m, columns, pages;
-    if (x < 0 || y < 0 || x >= OLED_WIDTH || y >= OLED_PAGES)
+    if (x < 0 || y < 0 || x >= OLED_WIDTH || y >= OLED_PAGES || !sizex || !sizey)
         return;
     columns = sizex;
     if (columns > OLED_WIDTH - x)
@@ -186,9 +196,12 @@ void OLED_DrawBMP(int16_t x, int16_t y, uint8_t sizex, uint8_t sizey, const uint
         pages = OLED_PAGES - y;
     for (i = 0; i < pages; i++) {
         OLED_Set_Pos(x, i + y);
+        oled_begin(OLED_DATA);
         for (m = 0; m < columns; m++) {
-            OLED_WR_Byte(BMP[(uint16_t)i * sizex + m], OLED_DATA);
+            i2c_write_byte(BMP[(uint16_t)i * sizex + m]);
+            i2c_clock_ack();
         }
+        i2c_stop();
     }
 }
 
