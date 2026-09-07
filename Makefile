@@ -28,9 +28,9 @@ $(error FwLib_STC8 is missing. Run 'git submodule update --init --recursive')
 endif
 endif
 
-# Match the existing clock assumption; do not trim the oscillator at runtime.
+# Match the 45 MHz ISP calibration target; do not trim the oscillator at runtime.
 HAL_FLAGS := -D__CONF_MCU_MODEL=MCU_MODEL_STC8H3K64S2 \
-             -D__CONF_FOSC=33177600UL -D__CONF_CLKDIV=0
+             -D__CONF_FOSC=45000000UL -D__CONF_CLKDIV=0
 
 MCU_FLAGS := -mmcs51 --model-large \
              --iram-size 256 --xram-size 3072 --code-size $(CODE_SIZE)

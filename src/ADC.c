@@ -15,7 +15,9 @@ void adc_init(void) {
     ADC_SetResultAlignmentRight();
     ADC_SetClockPrescaler(15); // ADC clock = system clock / 32.
     ADC_SetPWMTriggerState(HAL_State_OFF);
-    SYS_DelayUs(20);
+    ADC_SetPowerState(HAL_State_ON);
+    /* Allow at least 1 ms for ADC power stabilization before any conversion. */
+    SYS_Delay(2);
 }
 
 /*

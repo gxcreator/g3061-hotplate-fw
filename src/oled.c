@@ -1,4 +1,5 @@
 #include "oled.h"
+#include "fw_sys.h"
 #include "i2c.h"
 #include "oledfont.h"
 #include <stdlib.h>
@@ -15,14 +16,10 @@ static uint8_t __x, __y;
 #endif
 
 void delay_ms(uint16_t ms) {
-    volatile uint16_t a;
-    while (ms) {
-        a = 1800;
-        while (a--)
-            ;
-        ms--;
+    /* SYS_Delay uses a do/while loop, so do not pass zero. */
+    if (ms) {
+        SYS_Delay(ms);
     }
-    return;
 }
 
 // Display inversion

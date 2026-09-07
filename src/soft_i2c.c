@@ -1,9 +1,10 @@
 #include "board.h"
+#include "fw_sys.h"
 #include "i2c.h"
 
-/* Keep the call overhead and single NOP used by the tested bus timing. */
+/* Foreground only. At 45 MHz the SDCC delay exceeds 2 us, with Fast-mode margin. */
 static void soft_i2c_delay(void) {
-    NOP();
+    SYS_DelayUs(2);
 }
 
 void i2c_init(void) {
