@@ -11,7 +11,7 @@
 // Returns: non.
 // Version: V1.0, 2012-10-22
 //========================================================================
-void DisableEEPROM(void) {
+static void DisableEEPROM(void) {
     IAP_CONTR = 0;    // Disable IAP operations.
     IAP_CMD = 0;      // Clear the IAP command.
     IAP_TRIG = 0;     // Prevent accidental IAP command triggers.
@@ -26,7 +26,7 @@ void DisableEEPROM(void) {
 // Returns: none.
 // Version: V1.0, 2014-6-30
 //========================================================================
-void EEPROM_Trig(void) {
+static void EEPROM_Trig(void) {
     F0 = EA; // Save the global interrupt state.
     EA = 0;  // Disable interrupts so the trigger command remains valid.
     IAP_TRIG = 0x5A;

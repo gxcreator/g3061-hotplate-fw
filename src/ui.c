@@ -33,7 +33,8 @@ static uint8_t selection;
  * Clear history when limits change, so old and new scales never mix. */
 static uint8_t history[101];
 static uint16_t graph_min, graph_max;
-static float shown_duty;
+#define DUTY_Q6_SCALE 64u
+static uint16_t shown_duty; /* Q6 percent, 0..6400. */
 static __BIT graph_due = 1;
 
 uint8_t ui_home(void) {
@@ -205,16 +206,14 @@ static uint8_t normalized(uint16_t value, uint8_t scale) {
 
 static void render_home(void) {
     uint16_t actual = measurements_temperature(), target = settings_get(SET_TARGET);
-    float volts;
     Draw_realnum(0, 0, actual);
     Draw_tarnum(48, 12, target, 1);
-    volts = measurements_voltage();
-    if (volts > 99.9f)
-        volts = 99.9f;
-    Draw_voltage(48, 0, volts);
+    Draw_voltage(48, 0, measurements_voltage_centivolts());
     Draw_Loading(8, 24, 0, normalized(actual, 100));
-    shown_duty = shown_duty * 0.8f + realtime_duty() / 10 * 0.2f;
-    Draw_Loading(65, 24, 1, shown_duty >= 99 ? 100 : (uint8_t)shown_duty + 1);
+    /* Retain integer input percent; numerator <=32002 fits unsigned 16 bits. */
+    shown_duty = (4u * shown_duty + DUTY_Q6_SCALE * (realtime_duty() / 10u) + 2u) / 5u;
+    Draw_Loading(65, 24, 1,
+                 shown_duty >= 99u * DUTY_Q6_SCALE ? 100 : shown_duty / DUTY_Q6_SCALE + 1);
     Draw_Sign(11, 24, normalized(target, 100), target, actual);
     OLED_DrawBMP_2(
         84, 0, 42, 24,

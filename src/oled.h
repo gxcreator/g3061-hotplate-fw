@@ -24,27 +24,17 @@ void OLED_WR_Byte(uint8_t dat, uint8_t cmd);
  * DrawBMP writes whole pages, including padding in a partial final source page. */
 void OLED_Set_Pos(uint8_t x, uint8_t page);
 void OLED_Display_On(void);
-void OLED_Display_Off(void);
 void OLED_Clear(void);
 void OLED_ShowChar(uint8_t x, uint8_t y, uint8_t chr, uint8_t sizey);
-uint16_t oled_pow(uint8_t m, uint8_t n);
-void OLED_ShowNum(uint8_t x, uint8_t y, uint16_t num, uint8_t len, uint8_t sizey);
-void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey);
-void OLED_ShowChinese(uint8_t x, uint8_t y, uint8_t no, uint8_t sizey);
 void OLED_DrawBMP(int16_t x, int16_t y, uint8_t sizex, uint8_t sizey, const uint8_t BMP[]);
 void OLED_Init(void);
-void OLED_Display(void);
-void OLED_Write_Data(uint8_t dat);
 /* Buffered coordinates are native pixels: x 0..127, y 0..31. */
 void OLED_DrawPixel(uint8_t x, uint8_t y, uint8_t color);
 void OLED_display(void);
-void _swap_char(uint8_t *a, uint8_t *b);
+/* Inclusive endpoints; rejects either endpoint outside native bounds.
+ * Diagonals use integer Bresenham rasterization. */
 void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color);
 void OLED_display_clear(void);
-void OLED_Draw_Byte(uint8_t *pBuf, uint8_t mask, uint8_t offset, __BIT reserve_hl);
-void OLED_DrawChar(uint8_t x, uint8_t y, uint8_t chr);
-void OLED_DrawNum(uint8_t digit, uint8_t len);
-void OLED_Set_Posi(uint8_t x, uint8_t y);
 /* Native 6x8 text from code memory, with bottom clipping.
  * Stops before a partial glyph at the right edge; unsupported font indices draw a space. */
 void OLED_DrawStringSmall(uint8_t x, uint8_t y, const __code char *text);
@@ -59,5 +49,24 @@ void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize, const
     OLED_DrawBitmap((x0), (y0), (xsize), (ysize), (BMP), 0)
 #define OLED_DrawBMP_2_Inverted(x0, y0, xsize, ysize, BMP)                                         \
     OLED_DrawBitmap((x0), (y0), (xsize), (ysize), (BMP), 1)
+
+/* Default-off helpers with no production callers. Define via CPPFLAGS and rebuild with -B. */
+#ifdef OLED_ENABLE_LEGACY_API
+void OLED_Display_Off(void);
+uint16_t oled_pow(uint8_t m, uint8_t n);
+/* Direct text uses column/page coordinates, like OLED_ShowChar. */
+void OLED_ShowNum(uint8_t x, uint8_t y, uint16_t num, uint8_t len, uint8_t sizey);
+void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey);
+void _swap_char(uint8_t *a, uint8_t *b);
+void OLED_Draw_Byte(uint8_t *pBuf, uint8_t mask, uint8_t offset, __BIT reserve_hl);
+/* Buffered text and cursor use native pixel coordinates. */
+void OLED_DrawChar(uint8_t x, uint8_t y, uint8_t chr);
+void OLED_DrawNum(uint8_t digit, uint8_t len);
+void OLED_Set_Posi(uint8_t x, uint8_t y);
+/* Historical declarations only: no implementations, even with this option. Do not call. */
+void OLED_ShowChinese(uint8_t x, uint8_t y, uint8_t no, uint8_t sizey);
+void OLED_Display(void);
+void OLED_Write_Data(uint8_t dat);
+#endif
 
 #endif

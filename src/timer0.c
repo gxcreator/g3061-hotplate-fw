@@ -14,6 +14,8 @@ void Timer0Init(void) // 1000us@33.1776MHz
     EXTI_Timer0_SetIntState(HAL_State_ON);
 }
 
+#ifdef TIMER_ENABLE_TIMER2
+/* Starts Timer2 and enables its interrupt. Install a Timer2 ISR before calling. */
 void Timer2Init(void) // 50us@33.1776MHz
 {
     TIM_Timer2_Set1TMode(HAL_State_ON);
@@ -21,3 +23,4 @@ void Timer2Init(void) // 50us@33.1776MHz
     TIM_Timer2_SetRunState(HAL_State_ON);
     EXTI_Timer2_SetIntState(HAL_State_ON);
 }
+#endif

@@ -1,7 +1,12 @@
 #ifndef MEASUREMENTS_H
 #define MEASUREMENTS_H
 #include <stdint.h>
+
+#define MEASUREMENT_SAMPLE_COUNT 30
+
 uint8_t measurements_sample(void);
-float measurements_temperature(void);
-float measurements_voltage(void);
+/* Latest successful single reading in whole degrees C, shared by control and UI. */
+uint16_t measurements_temperature(void);
+/* Display-only centivolts, rounded to nearest and saturated at 9990 (99.9 V). */
+uint16_t measurements_voltage_centivolts(void);
 #endif

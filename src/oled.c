@@ -1,16 +1,18 @@
 #include "oled.h"
 #include "i2c.h"
 #include "oledfont.h"
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-__xdata uint8_t _buf[OLED_WIDTH * OLED_PAGES] = {0};
+static __xdata uint8_t oled_buffer[OLED_WIDTH * OLED_PAGES];
 
-__BIT _OLED_Reverse = 0;
-__BIT _OLED_Overlap = 1;
+#ifdef OLED_ENABLE_LEGACY_API
+/* State used only by the optional legacy buffered text/byte helpers. */
+static __BIT _OLED_Reverse = 0;
+static __BIT _OLED_Overlap = 1;
 
 static uint8_t __x, __y;
+#endif
 
 void delay_ms(uint16_t ms) {
     volatile uint16_t a;
@@ -77,12 +79,14 @@ void OLED_Display_On(void) {
     OLED_WR_Byte(0X14, OLED_CMD); // DCDC ON
     OLED_WR_Byte(0XAF, OLED_CMD); // DISPLAY ON
 }
+#ifdef OLED_ENABLE_LEGACY_API
 // Disable OLED display
 void OLED_Display_Off(void) {
     OLED_WR_Byte(0X8D, OLED_CMD); // SET DCDC command
     OLED_WR_Byte(0X10, OLED_CMD); // DCDC OFF
     OLED_WR_Byte(0XAE, OLED_CMD); // DISPLAY OFF
 }
+#endif
 // Clear the display to black.
 void OLED_Clear(void) {
     uint8_t i, n;
@@ -108,6 +112,7 @@ void OLED_ShowChar(uint8_t x, uint8_t y, uint8_t chr, uint8_t sizey) {
         OLED_DrawBMP(x, y, 8, 16, asc2_1608[c]);
     }
 }
+#ifdef OLED_ENABLE_LEGACY_API
 // Compute m^n
 uint16_t oled_pow(uint8_t m, uint8_t n) {
     uint16_t result = 1;
@@ -166,6 +171,7 @@ void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *chr, uint8_t sizey) {
 //		else return;
 //	}
 //}
+#endif
 
 // Display an image
 // x: column; y: controller page. This bypasses the framebuffer.
@@ -242,7 +248,7 @@ void OLED_DrawPixel(uint8_t x, uint8_t y, uint8_t color) {
     if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
         return;
     }
-    pBuf = &_buf[(uint16_t)(y >> 3) * OLED_WIDTH + x];
+    pBuf = &oled_buffer[(uint16_t)(y >> 3) * OLED_WIDTH + x];
     mask = 1 << (y & 7);
     if (!color) {
         *pBuf++ &= ~mask;
@@ -251,11 +257,13 @@ void OLED_DrawPixel(uint8_t x, uint8_t y, uint8_t color) {
     }
 }
 
+#ifdef OLED_ENABLE_LEGACY_API
 void _swap_char(uint8_t *a, uint8_t *b) {
     uint8_t tmp = *a;
     *a = *b;
     *b = tmp;
 }
+#endif
 
 /*========================================================
  * Purpose: Draw a line in the OLED buffer.
@@ -264,9 +272,9 @@ void _swap_char(uint8_t *a, uint8_t *b) {
  * Return: None.
  *========================================================*/
 void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color) {
-    uint8_t i = 0;
-    int8_t DeltaY = 0, DeltaX = 0;
-    float k = 0, b = 0;
+    uint8_t i;
+    int16_t dx, dy, error, twice_error;
+    int8_t sy;
     if (x1 >= OLED_WIDTH || x2 >= OLED_WIDTH || y1 >= OLED_HEIGHT || y2 >= OLED_HEIGHT)
         return;
     if (x1 > x2) {
@@ -276,11 +284,9 @@ void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color
         i = y2;
         y2 = y1;
         y1 = i;
-        i = 0;
     }
-    DeltaY = y2 - y1;
-    DeltaX = x2 - x1;
-    if (DeltaX == 0) {
+    /* Keep byte-sized axis loops for the loading bars. */
+    if (x1 == x2) {
         if (y1 <= y2) {
             for (y1; y1 <= y2; y1++) {
                 OLED_DrawPixel(x1, y1, color);
@@ -290,39 +296,42 @@ void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t color
                 OLED_DrawPixel(x1, y2, color);
             }
         }
-    } else if (DeltaY == 0) {
+    } else if (y1 == y2) {
         for (x1; x1 <= x2; x1++) {
             OLED_DrawPixel(x1, y1, color);
         }
     } else {
-        k = ((float)DeltaY) / ((float)DeltaX);
-        b = y2 - k * x2;
-        if ((k > -1 & k < 1)) {
-            for (x1; x1 <= x2; x1++) {
-                OLED_DrawPixel(x1, (int16_t)(k * x1 + b), color);
+        dx = (int16_t)x2 - x1;
+        dy = y1 < y2 ? (int16_t)y1 - y2 : (int16_t)y2 - y1;
+        sy = y1 < y2 ? 1 : -1;
+        error = dx + dy;
+        for (;;) {
+            OLED_DrawPixel(x1, y1, color);
+            if (x1 == x2 && y1 == y2)
+                break;
+            /* Multiply, not a signed left shift: error can be negative. */
+            twice_error = error * 2;
+            if (twice_error >= dy) {
+                error += dy;
+                ++x1;
             }
-        } else if ((k >= 1) | (k <= -1)) {
-            if (y1 <= y2) {
-                for (y1; y1 <= y2; y1++) {
-                    OLED_DrawPixel((int16_t)((y1 - b) / k), y1, color);
-                }
-            } else if (y1 > y2) {
-                for (y2; y2 <= y1; y2++) {
-                    OLED_DrawPixel((int16_t)((y2 - b) / k), y2, color);
-                }
+            if (twice_error <= dx) {
+                error += dx;
+                y1 += sy;
             }
         }
     }
 }
 
 void OLED_display(void) {
-    OLED_DrawBMP(0, 0, OLED_WIDTH, OLED_HEIGHT, _buf);
+    OLED_DrawBMP(0, 0, OLED_WIDTH, OLED_HEIGHT, oled_buffer);
 }
 
 void OLED_display_clear(void) {
-    memset(_buf, 0x00, sizeof _buf);
+    memset(oled_buffer, 0x00, sizeof oled_buffer);
 }
 
+#ifdef OLED_ENABLE_LEGACY_API
 void OLED_Draw_Byte(uint8_t *pBuf, uint8_t mask, uint8_t offset, __BIT reserve_hl) {
     if (_OLED_Overlap) {
         if (_OLED_Reverse)
@@ -400,6 +409,7 @@ void OLED_DrawNum(uint8_t digit, uint8_t len) {
     if (__x < OLED_WIDTH)
         __x += 8 * (t - i);
 }
+#endif
 
 void OLED_DrawStringSmall(uint8_t x, uint8_t y, const __code char *text) {
     uint8_t c;
@@ -430,7 +440,7 @@ void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize, const
     while (ysize) {
         rows = ysize < 8 ? ysize : 8;
         mask = (uint16_t)(0xff >> (8 - rows)) << offset;
-        dest = &_buf[(uint16_t)(y0 >> 3) * OLED_WIDTH + x0];
+        dest = &oled_buffer[(uint16_t)(y0 >> 3) * OLED_WIDTH + x0];
         for (col = 0; col < columns; ++col) {
             byte = BMP[col];
             if (inverted)

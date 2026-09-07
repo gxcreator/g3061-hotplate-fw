@@ -16,12 +16,13 @@ INTERRUPT(timer0, EXTI_VectTimer0) {
 }
 
 static void update_controller(uint8_t events) {
+    int16_t error;
     if (realtime_enabled() && ((events & REALTIME_PID) || realtime_needs_reset())) {
         if (realtime_needs_reset())
             pid_reset();
-        realtime_publish(pid_step(settings_get(SET_TARGET), measurements_temperature(),
-                                  settings_get(SET_KP), settings_get(SET_KI),
-                                  settings_get(SET_KD)));
+        error = (int16_t)settings_get(SET_TARGET) - (int16_t)measurements_temperature();
+        realtime_publish(
+            pid_step(error, settings_get(SET_KP), settings_get(SET_KI), settings_get(SET_KD)));
     }
 }
 

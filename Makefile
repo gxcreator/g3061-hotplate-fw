@@ -2,7 +2,7 @@
 # (open-source 8051 compiler) instead of Keil C51.
 #
 # Target: STC8H3K64S2  (64KB flash, 256B IRAM, 3KB XRAM)
-# Matches the Keil project's LARGE memory model with floating point.
+# Matches the Keil project's LARGE memory model; production arithmetic is integer-only.
 #
 # Usage:   make            -> build/HeatingPlate-PD.hex
 #          make clean

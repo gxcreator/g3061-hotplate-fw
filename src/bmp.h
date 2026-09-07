@@ -71,11 +71,13 @@ const uint8_t __code SMALLNUM[10][16] = {{0x00, 0xFC, 0xC6, 0x63, 0x23, 0x12, 0x
                                          {0x00, 0x3C, 0x62, 0x43, 0x43, 0x22, 0xFC, 0x00, 0x00,
                                           0x04, 0x04, 0x06, 0x02, 0x03, 0x01, 0x00}};
 
-/* Native 23x12, page-major; final-page padding is zero. */
+#ifdef OLED_ENABLE_UNUSED_ASSETS
+/* Unused artwork, default off. Native 23x12, page-major; final-page padding is zero. */
 const uint8_t __code taroff[] = {
     0xE0, 0x10, 0x10, 0x10, 0x10, 0xE0, 0x00, 0x00, 0x20, 0x20, 0xFC, 0x26, 0x22, 0x22, 0x02, 0x00,
     0x20, 0x20, 0xFC, 0x26, 0x22, 0x22, 0x02, 0x03, 0x04, 0x04, 0x04, 0x04, 0x03, 0x00, 0x00, 0x00,
     0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00};
+#endif
 
 /* Native 11x12, page-major; final-page padding is zero. */
 const uint8_t __code oc[] = {0x18, 0x24, 0x24, 0x18, 0x00, 0xF8, 0x04, 0x04, 0x04, 0x04, 0x18,
@@ -357,11 +359,14 @@ void Draw_tarnum(uint8_t x, uint8_t y, uint16_t num, uint8_t com) {
     }
 }
 
-void Draw_voltage(uint8_t x, uint8_t y, float vol) {
+/* Display centivolts: two decimals below 10 V, otherwise nearest tenth. */
+void Draw_voltage(uint8_t x, uint8_t y, uint16_t centivolts) {
     uint8_t num1, num2, num3;
     uint16_t voll;
-    if (vol < 10) {
-        voll = vol * 100;
+    if (centivolts > 9990)
+        centivolts = 9990;
+    if (centivolts < 1000) {
+        voll = centivolts;
         num1 = voll / 100;
         num2 = (voll / 10) % 10;
         num3 = voll % 10;
@@ -374,9 +379,8 @@ void Draw_voltage(uint8_t x, uint8_t y, float vol) {
         OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num3]);
         x += 8;
         OLED_DrawBMP_2(x, y, 8, 12, volv);
-    }
-    if (vol >= 10) {
-        voll = vol * 10;
+    } else {
+        voll = (centivolts + 5) / 10;
         num1 = voll / 100;
         num2 = (voll / 10) % 10;
         num3 = voll % 10;

@@ -6,8 +6,7 @@ void pid_reset(void) {
     integral = previous = 0;
 }
 
-uint16_t pid_step(uint16_t target, float temperature, uint16_t kp, uint16_t ki, uint16_t kd) {
-    int16_t error = (int16_t)(target - temperature);
+uint16_t pid_step(int16_t error, uint16_t kp, uint16_t ki, uint16_t kd) {
     int32_t p, in, d, output;
     if (error > -10 && error < 10)
         integral += error;
