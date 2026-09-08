@@ -7,6 +7,7 @@
 # Usage:   make            -> build/HeatingPlate-PD.hex
 #          make clean
 #          make format     -> format project-owned C sources and headers
+#          make clang-tidy -> analyze project-owned C sources
 #
 # Linker limit: 60 KiB code. The programmed flash/EEPROM split is separate.
 
@@ -15,6 +16,7 @@ SDAS8051 ?= sdas8051
 PACKIHX ?= packihx
 HOST_CC ?= cc
 CLANG_FORMAT ?= clang-format
+CLANG_TIDY ?= clang-tidy
 
 SRC_DIR := src
 BUILD   := build
@@ -35,7 +37,7 @@ HAL_FLAGS := -D__CONF_MCU_MODEL=MCU_MODEL_STC8H3K64S2 \
 MCU_FLAGS := -mmcs51 --model-large \
              --iram-size 256 --xram-size 3072 --code-size $(CODE_SIZE)
 
-CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-size -Isrc \
+CFLAGS  := $(MCU_FLAGS) --fsigned-char --opt-code-speed -Isrc \
            -I$(HAL_DIR)/include $(HAL_FLAGS)
 LFLAGS  := $(MCU_FLAGS) --out-fmt-ihx
 
@@ -43,8 +45,16 @@ APP_SRCS := settings.c measurements.c pid.c buttons.c realtime.c ui.c
 SRCS := main.c $(APP_SRCS) ADC.c temperature.c oled.c soft_i2c.c EEPROM.c timer0.c
 # SDCC 4.6.0 runtime source, with DUAL_DPTR=1 for the STC8H's DPS selector.
 RELS := $(SRCS:%.c=$(BUILD)/%.rel) $(BUILD)/fw_sys.rel $(BUILD)/fw_adc.rel $(BUILD)/crtxinit.rel
+# Preserve the factory BGV IDATA pair until main copies it in every image.
+RELS += $(BUILD)/bgv_crtclear.rel
 HDRS := $(wildcard $(SRC_DIR)/*.h $(HAL_DIR)/include/*.h)
 FORMAT_FILES := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*.h tests/*.c tests/*.h)
+CLANG_TIDY_FILES ?= $(SRCS:%=$(SRC_DIR)/%)
+CLANG_TIDY_FLAGS ?=
+CLANG_TIDY_CFLAGS ?= -std=c11 -ffreestanding -Wall -Wextra -Wno-parentheses -Wno-cpp \
+	-Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wundef -Wswitch-enum -Wformat=2 \
+	-I$(SRC_DIR) -I$(HAL_DIR)/include -Itools/clang-tidy $(HAL_FLAGS) \
+	-D__SDCC=1 -D__SDCC_SYNTAX_FIX=1 -D__code= -D__xdata= -D__idata= $(CPPFLAGS)
 
 all: $(BUILD)/$(TARGET).hex
 	@awk 'function report(name, used, limit) { \
@@ -128,7 +138,10 @@ format:
 format-check:
 	$(CLANG_FORMAT) --style=file --dry-run --Werror $(FORMAT_FILES)
 
+clang-tidy:
+	$(CLANG_TIDY) $(CLANG_TIDY_FLAGS) $(CLANG_TIDY_FILES) -- $(CLANG_TIDY_CFLAGS)
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test test-sanitize format format-check
+.PHONY: all clean test test-sanitize format format-check clang-tidy

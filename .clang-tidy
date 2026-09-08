@@ -1,0 +1,27 @@
+---
+Checks: >
+  -*,
+  clang-analyzer-*,
+  -clang-analyzer-core.FixedAddressDereference,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-too-small-loop-variable,
+  cert-*,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  misc-confusable-identifiers,
+  misc-misleading-bidirectional,
+  misc-misleading-identifier,
+  misc-misplaced-const,
+  misc-no-recursion,
+  misc-redundant-expression,
+  portability-*
+WarningsAsErrors: ''
+HeaderFilterRegex: '(^|/)src/'
+ExcludeHeaderFilterRegex: '(^|/)lib/FwLib_STC8/'
+FormatStyle: file
+...

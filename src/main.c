@@ -63,11 +63,16 @@ static void run_persistence(uint8_t keys) {
 }
 
 void main(void) {
-    uint8_t keys;
+    uint8_t bgv_high, bgv_low, keys;
     /* Set the off latch before enabling the heater's push-pull driver. */
     heat = 0;
+    EXTI_Global_SetIntState(HAL_State_OFF);
+    /* bgv_crtclear retains these bytes; copy before any calls use the stack. */
+    bgv_high = *((const volatile __idata uint8_t *)0xEF);
+    bgv_low = *((const volatile __idata uint8_t *)0xF0);
     GPIO_P3_SetMode(HEATER_PIN, GPIO_Mode_Output_PP);
     SFRX_ON(); // Extended-register access stays enabled globally.
+    measurements_init(((uint16_t)bgv_high << 8) | bgv_low);
     settings_load();
     GPIO_P1_SetMode(SUPPLY_ADC_PIN | TEMPERATURE_ADC_PIN, GPIO_Mode_Input_HIP);
     key0 = key1 = 1;

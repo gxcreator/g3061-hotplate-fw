@@ -25,9 +25,10 @@
 #error Supply divider ratio must divide 409600 exactly
 #endif
 
-/* Nominal STC8H internal reference signal, measured on ADC channel 15.
- * Each chip has its own BGV value and the ISP downloader shows it at download
- * time. TOFO: read BGV from the chip */
-#define ADC_REFERENCE_MILLIVOLTS 1190UL
+/* Factory BGV is in mV; these are engineering sanity limits, not datasheet limits.
+ * Invalid boot data retains the previous nominal channel-15 reference. */
+#define ADC_REFERENCE_FALLBACK_MILLIVOLTS 1190UL
+#define ADC_REFERENCE_MIN_MILLIVOLTS 1000UL
+#define ADC_REFERENCE_MAX_MILLIVOLTS 1400UL
 
 #endif

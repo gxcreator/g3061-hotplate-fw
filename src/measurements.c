@@ -5,22 +5,25 @@
 #include "measurements.h"
 #include "realtime.h"
 
-#if MEASUREMENT_SAMPLE_COUNT != 30 || SUPPLY_VOLTAGE_SCALE != 20 || ADC_REFERENCE_MILLIVOLTS != 1190
+#if MEASUREMENT_SAMPLE_COUNT != 30 || SUPPLY_VOLTAGE_SCALE != 20 || \
+    ADC_REFERENCE_MIN_MILLIVOLTS < 1000 || ADC_REFERENCE_MAX_MILLIVOLTS > 1400 || \
+    ADC_REFERENCE_MIN_MILLIVOLTS > ADC_REFERENCE_MAX_MILLIVOLTS || \
+    ADC_REFERENCE_FALLBACK_MILLIVOLTS < ADC_REFERENCE_MIN_MILLIVOLTS || \
+    ADC_REFERENCE_FALLBACK_MILLIVOLTS > ADC_REFERENCE_MAX_MILLIVOLTS
 #error Recalculate fixed-point voltage bounds before changing measurement constants
 #endif
 
 /* Highest code a 12-bit ADC can return. */
 #define ADC_MAX_COUNT 4095u
 
-/* The bandgap reads ADC_REFERENCE_MILLIVOLTS * 4096 / Vcc, so its count falls
- * as the rail rises. This window spans a 2.57 V to 6.09 V rail; outside it the
- * reference is broken rather than the supply unusual. It also bounds
- * vcc_tenth_mv, which keeps the voltage product inside uint32_t. */
+/* The bandgap reads BGV_mV * 4096 / Vcc, so its count falls as the rail rises.
+ * Retain the existing ADC acceptance window; its physical rail range depends
+ * on calibration. It also bounds the voltage product inside uint32_t. */
 #define REFERENCE_MIN_COUNT 800u
 #define REFERENCE_MAX_COUNT 1900u
 
-/* Vcc in 0.1 mV units is this over the bandgap count. Value: 48742400. */
-#define REFERENCE_NUMERATOR (ADC_REFERENCE_MILLIVOLTS * 4096UL * 10UL)
+/* Cached once at startup; Vcc in 0.1 mV units is this over the bandgap count. */
+static uint32_t vref_adc_scaled;
 
 /* Four digits on the display. */
 #define VOLTAGE_MAX_CENTIVOLTS 9990u
@@ -46,6 +49,12 @@ static uint16_t average_value(uint32_t sum) {
  * calls and 95% after 88, where a window would be complete after 30. */
 static void average_add(uint32_t *sum, uint16_t sample) {
     *sum = *sum - average_value(*sum) + sample;
+}
+
+void measurements_init(uint16_t bgv_mv) {
+    if (bgv_mv < ADC_REFERENCE_MIN_MILLIVOLTS || bgv_mv > ADC_REFERENCE_MAX_MILLIVOLTS)
+        bgv_mv = ADC_REFERENCE_FALLBACK_MILLIVOLTS;
+    vref_adc_scaled = (uint32_t)bgv_mv * 4096UL * 10UL;
 }
 
 uint8_t measurements_sample(void) {
@@ -83,10 +92,10 @@ uint8_t measurements_sample(void) {
     reference_mean = average_value(reference_sum);
     supply_mean = average_value(supply_sum);
 
-    /* Measure the rail against the fixed bandgap, then scale the divider
-     * reading by it. Taking the means first keeps the product at
-     * 60928 * 4095 = 249500160, inside uint32_t without splitting. */
-    vcc_tenth_mv = (REFERENCE_NUMERATOR + reference_mean / 2) / reference_mean;
+    /* Measure the rail against the calibrated bandgap, then scale the divider
+     * reading by it. Taking the means first keeps the product
+     * at most 71680 * 4095 = 293529600, inside uint32_t without splitting. */
+    vcc_tenth_mv = (vref_adc_scaled + reference_mean / 2) / reference_mean;
     centivolts = (vcc_tenth_mv * supply_mean + SUPPLY_VOLTAGE_DIVISOR / 2) / SUPPLY_VOLTAGE_DIVISOR;
 
     voltage_centivolts =
