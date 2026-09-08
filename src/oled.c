@@ -384,8 +384,8 @@ void OLED_DrawStringSmall(uint8_t x, uint8_t y, const __code char *text) {
     }
 }
 
-void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize, const uint8_t *BMP,
-                     uint8_t inverted) {
+void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize,
+                     const __code uint8_t *BMP, uint8_t inverted) {
     uint8_t columns, offset, rows, col, byte;
     uint16_t mask, bits;
     __xdata uint8_t *dest;

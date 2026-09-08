@@ -336,69 +336,55 @@ const uint8_t __code xy[] = {
     0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80,
     0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80};
 
+/* Fixed-width, leading-zero digits, extracted right to left. Decimal is the
+ * number of digits to its right, or zero for none. Callers use 3 or 4 digits. */
+static void draw_digits(uint8_t x, uint8_t y, uint16_t num, uint8_t digits, uint8_t large,
+                        uint8_t decimal) {
+    uint8_t width = large ? 16 : 8, height = large ? 24 : 12;
+    uint8_t digit;
+    const __code uint8_t *bitmap;
+
+    if (x >= OLED_WIDTH || y >= OLED_HEIGHT)
+        return;
+    /* Visible origins plus the largest field offset fit in uint8_t. */
+    x += (digits - 1) * width + (decimal ? 2 : 0);
+    for (;;) {
+        digit = num % 10;
+        bitmap = large ? BIGNUM[digit] : SMALLNUM[digit];
+        OLED_DrawBMP_2(x, y, width, height, bitmap);
+        if (--digits == 0)
+            break;
+        num /= 10;
+        if (decimal && --decimal == 0) {
+            x -= 2;
+            OLED_DrawBMP_2(x, y, 2, 12, vol_);
+        }
+        x -= width;
+    }
+}
+
 void Draw_realnum(uint8_t x, uint8_t y, uint16_t num) {
-    uint8_t ge, sh, ba;
-    ge = num % 10;
-    sh = (num / 10) % 10;
-    ba = (num / 100) % 10;
-    OLED_DrawBMP_2(x, y, 16, 24, BIGNUM[ba]);
-    x += 16;
-    OLED_DrawBMP_2(x, y, 16, 24, BIGNUM[sh]);
-    x += 16;
-    OLED_DrawBMP_2(x, y, 16, 24, BIGNUM[ge]);
+    draw_digits(x, y, num, 3, 1, 0);
 }
 
 void Draw_tarnum(uint8_t x, uint8_t y, uint16_t num, uint8_t com) {
-    uint8_t ge, sh, ba;
-    ge = num % 10;
-    sh = (num / 10) % 10;
-    ba = (num / 100);
-    OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[ba]);
-    x += 8;
-    OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[sh]);
-    x += 8;
-    OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[ge]);
-    if (com) {
-        x += 8;
-        OLED_DrawBMP_2(x, y, 11, 12, oc);
-    }
+    draw_digits(x, y, num, 3, 0, 0);
+    if (com && x < OLED_WIDTH)
+        OLED_DrawBMP_2(x + 24, y, 11, 12, oc);
 }
 
 /* Display centivolts: two decimals below 10 V, otherwise nearest tenth. */
 void Draw_voltage(uint8_t x, uint8_t y, uint16_t centivolts) {
-    uint8_t num1, num2, num3;
-    uint16_t voll;
+    uint8_t decimal = 2;
     if (centivolts > 9990)
         centivolts = 9990;
-    if (centivolts < 1000) {
-        voll = centivolts;
-        num1 = voll / 100;
-        num2 = (voll / 10) % 10;
-        num3 = voll % 10;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num1]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 2, 12, vol_);
-        x += 2;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num2]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num3]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, volv);
-    } else {
-        voll = (centivolts + 5) / 10;
-        num1 = voll / 100;
-        num2 = (voll / 10) % 10;
-        num3 = voll % 10;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num1]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num2]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 2, 12, vol_);
-        x += 2;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num3]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, volv);
+    if (centivolts >= 1000) {
+        centivolts = (centivolts + 5) / 10;
+        decimal = 1;
     }
+    draw_digits(x, y, centivolts, 3, 0, decimal);
+    if (x < OLED_WIDTH)
+        OLED_DrawBMP_2(x + 26, y, 8, 12, volv);
 }
 
 void Draw_Loading(uint8_t x, uint8_t y, uint8_t dir, uint8_t comp) {
@@ -455,28 +441,7 @@ void Draw_Sign(uint8_t x, uint8_t y, uint8_t comp, uint16_t numa, uint16_t numb)
 }
 
 void Draw_midnum(uint8_t x, uint8_t y, uint16_t num, uint8_t length) {
-    uint8_t num1, num2, num3, num4;
-    if (length == 3) {
-        num1 = num / 100;
-        num2 = (num / 10) % 10;
-        num3 = num % 10;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num1]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num2]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num3]);
-    } else if (length == 4) {
-        num1 = num / 1000;
-        num2 = (num / 100) % 10;
-        num3 = (num / 10) % 10;
-        num4 = num % 10;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num1]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num2]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num3]);
-        x += 8;
-        OLED_DrawBMP_2(x, y, 8, 12, SMALLNUM[num4]);
-    }
+    if (length == 3 || length == 4)
+        draw_digits(x, y, num, length, 0, 0);
 }
 #endif

@@ -40,8 +40,8 @@ void OLED_DrawStringSmall(uint8_t x, uint8_t y, const __code char *text);
  * Source is page-major, bit 0 at top, xsize * ceil(ysize/8) bytes.
  * Clips right/bottom, retaining source stride. Pixels outside the rectangle are preserved.
  * Nonzero inverted complements only active pixels, never final-page padding. */
-void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize, const uint8_t *BMP,
-                     uint8_t inverted);
+void OLED_DrawBitmap(uint8_t x0, uint8_t y0, uint8_t xsize, uint8_t ysize,
+                     const __code uint8_t *BMP, uint8_t inverted);
 /* Macros avoid SDCC XRAM parameter storage for runtime wrappers. */
 #define OLED_DrawBMP_2(x0, y0, xsize, ysize, BMP)                                                  \
     OLED_DrawBitmap((x0), (y0), (xsize), (ysize), (BMP), 0)
