@@ -3,7 +3,17 @@
 This project ports the original Keil firmware to SDCC for the STC8H3K64S2 microcontroller with few improvements.
 It controls a heating plate with an OLED display, buttons, and settings stored in EEPROM.
 
-![G3061](G3061-small2.jpg)
+Features compared to original:
+- Readable SDCC compilable (no need for Keil) code with smaller footprint
+- No fp math
+- Based on FwLib = could be easily ported on another 8051 MCU
+- Automatic Vref for voltage measurements
+- Better fonts and images
+- Translated to english
+- PT100 thermal sensor
+
+![G3061](G3061-small3.jpg)
+
 
 Board pin assignments are in `src/board.h`:
 
@@ -55,6 +65,9 @@ Keep this file in the build. Do not add `--no-xinit-opt`.
 Programming replaces the installed firmware(no way to backup it).
 
 Connect a compatible USB-to-UART adapter to the board.
+
+
+![G3061](G3061-small2.jpg)
 
 When stcgal requests a power cycle, disconnect the board's power.
 Restore power to let stcgal detect the chip.
